@@ -1,0 +1,44 @@
+{
+  "name": "@toolgraph/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "toolgraph web app — canvas, auth, saved graphs, export UI.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start --port 3000",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "4.7.0",
+    "@sentry/nextjs": "10.73.0",
+    "@supabase/ssr": "0.12.5",
+    "@supabase/supabase-js": "2.112.4",
+    "@toolgraph/codegen": "workspace:*",
+    "@toolgraph/schema-core": "workspace:*",
+    "@toolgraph/ui": "workspace:*",
+    "@upstash/ratelimit": "2.0.8",
+    "@upstash/redis": "1.38.3",
+    "next": "15.5.25",
+    "posthog-js": "1.422.5",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "reactflow": "11.11.4",
+    "resend": "6.25.0",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@testing-library/react": "16.3.3",
+    "@types/node": "22.20.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "@vitejs/plugin-react": "6.1.1",
+    "jsdom": "30.0.1",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
+  }
+}

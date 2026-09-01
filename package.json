@@ -1,0 +1,55 @@
+{
+  "name": "toolgraph",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Visual canvas for wiring MCP tools together, statically type-checked against real JSON Schemas.",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": ">=22.0.0 <25"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/**\" dev",
+    "dev:web": "pnpm --filter @toolgraph/web dev",
+    "dev:engine": "pnpm --filter @toolgraph/engine dev",
+    "build": "pnpm --filter @toolgraph/engine build && pnpm --filter @toolgraph/web build",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r --no-bail typecheck",
+    "test": "vitest run --coverage=false",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:rls": "vitest run --config vitest.rls.config.ts",
+    "audit:ci": "pnpm audit --audit-level high --prod",
+    "secrets:scan": "gitleaks dir . --config .gitleaks.toml --redact --no-banner",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@playwright/test": "1.62.1",
+    "@types/node": "22.20.1",
+    "@vitest/coverage-v8": "4.1.11",
+    "eslint": "9.39.5",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.11.0",
+    "husky": "9.1.7",
+    "lint-staged": "17.4.1",
+    "prettier": "3.9.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.69.0",
+    "vitest": "4.1.11"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,mjs,cjs}": [
+      "eslint --fix --max-warnings=0",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml,css}": [
+      "prettier --write"
+    ]
+  }
+}

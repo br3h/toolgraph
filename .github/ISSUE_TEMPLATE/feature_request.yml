@@ -1,0 +1,51 @@
+name: Feature request
+description: Suggest a capability toolgraph does not have yet.
+title: '[feature] '
+labels: ['enhancement', 'needs triage']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that toolgraph makes hard or impossible today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like to see
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of toolgraph
+      options:
+        - Canvas / type checking
+        - Auth or saved graphs
+        - MCP server connection / introspection
+        - Live test-run
+        - Code export (TypeScript or Python)
+        - Execution engine
+        - Docs or local setup
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This keeps toolgraph's exported code free of any toolgraph runtime dependency.
+          required: false
+        - label: This works within the strict monochrome design system.
+          required: false

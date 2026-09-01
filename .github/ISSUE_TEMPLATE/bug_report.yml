@@ -1,0 +1,89 @@
+name: Bug report
+description: Something in toolgraph does not work the way it should.
+title: '[bug] '
+labels: ['bug', 'needs triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file this. Please do not include API keys,
+        tokens, or the contents of your `.env.local` anywhere in this report.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you see?
+      placeholder: Connecting two tools showed a generic error instead of the field mismatch.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of toolgraph
+      options:
+        - Canvas / type checking
+        - Auth or saved graphs
+        - MCP server connection / introspection
+        - Live test-run
+        - Code export (TypeScript or Python)
+        - Execution engine
+        - Docs or local setup
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: The git SHA you are on, or the deployed URL where you saw it.
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Output of `node -v`, `pnpm -v`, your OS, and your browser.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste any console or terminal output. Redact anything sensitive.
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before submitting
+      options:
+        - label: I have searched existing issues for a duplicate.
+          required: true
+        - label: This report contains no credentials, tokens, or secret values.
+          required: true

@@ -1,0 +1,82 @@
+# gitleaks configuration for toolgraph.
+# Extends the upstream default ruleset and adds rules for every third-party
+# credential this project touches, so a paste-accident is blocked at commit time.
+title = "toolgraph"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "supabase-secret-key"
+description = "Supabase secret (service-role) key"
+regex = '''\bsb_secret_[A-Za-z0-9_\-]{20,}'''
+keywords = ["sb_secret_"]
+
+[[rules]]
+id = "supabase-publishable-key"
+description = "Supabase publishable key"
+regex = '''\bsb_publishable_[A-Za-z0-9_\-]{20,}'''
+keywords = ["sb_publishable_"]
+
+[[rules]]
+id = "supabase-legacy-jwt"
+description = "Supabase legacy anon/service_role JWT"
+regex = '''\beyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{20,}'''
+keywords = ["eyJ"]
+
+[[rules]]
+id = "resend-api-key"
+description = "Resend API key"
+regex = '''\bre_[A-Za-z0-9_\-]{20,}'''
+keywords = ["re_"]
+
+[[rules]]
+id = "sentry-auth-token"
+description = "Sentry auth token"
+regex = '''\bsntrys?_[A-Za-z0-9_\-=]{20,}'''
+keywords = ["sntry"]
+
+[[rules]]
+id = "sentry-dsn"
+description = "Sentry DSN with embedded public key"
+regex = '''https://[a-f0-9]{16,}@[a-z0-9.\-]+\.ingest\.[a-z0-9.\-]*sentry\.io/\d+'''
+keywords = ["ingest", "sentry.io"]
+
+[[rules]]
+id = "posthog-project-key"
+description = "PostHog project API key"
+regex = '''\bphc_[A-Za-z0-9]{30,}'''
+keywords = ["phc_"]
+
+[[rules]]
+id = "upstash-redis-rest-token"
+description = "Upstash Redis REST token"
+regex = '''\b(?i:A[A-Za-z0-9_\-]{6,}=)[A-Za-z0-9_\-=]{30,}'''
+keywords = ["UPSTASH_REDIS_REST_TOKEN"]
+
+[[rules]]
+id = "vercel-token"
+description = "Vercel access token"
+regex = '''\b(?i)vercel[_\-. ]?(?:api[_\-. ]?)?token['"\s:=]{1,5}['"]?[A-Za-z0-9]{24}'''
+keywords = ["vercel"]
+
+[allowlist]
+description = "Non-secret files and documented placeholders"
+paths = [
+  '''\.env\.example$''',
+  '''pnpm-lock\.yaml$''',
+  '''(^|/)README\.md$''',
+  '''(^|/)CONTRIBUTING\.md$''',
+  '''(^|/)SECURITY\.md$''',
+  '''(^|/)\.gitleaks\.toml$''',
+  '''(^|/)public/.*\.(png|jpe?g|svg|ico|webp)$''',
+]
+regexes = [
+  '''your-project-ref''',
+  '''sb_publishable_xxx''',
+  '''sb_secret_xxx''',
+  '''re_xxxxxxxx''',
+  '''phc_xxxxxxxx''',
+  '''EXAMPLE''',
+  '''<[a-z\-]+>''',
+]

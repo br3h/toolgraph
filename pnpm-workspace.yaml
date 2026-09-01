@@ -1,0 +1,11 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# pnpm 10 requires explicit opt-in for postinstall scripts. Only these need one.
+onlyBuiltDependencies:
+  - esbuild
+  - '@tailwindcss/oxide'
+  - '@sentry/cli'
+  - sharp
+  - unrs-resolver

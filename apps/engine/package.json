@@ -1,0 +1,37 @@
+{
+  "name": "@toolgraph/engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "toolgraph execution engine — Fastify service that introspects MCP servers and runs graphs.",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@cfworker/json-schema": "4.1.1",
+    "@fastify/cors": "11.3.0",
+    "@fastify/rate-limit": "11.2.0",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "@sentry/node": "10.73.0",
+    "@toolgraph/mcp-client": "workspace:*",
+    "@toolgraph/schema-core": "workspace:*",
+    "@upstash/ratelimit": "2.0.8",
+    "@upstash/redis": "1.38.3",
+    "fastify": "5.12.1",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "pino-pretty": "13.1.3",
+    "tsup": "8.5.1",
+    "tsx": "4.23.13",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
+  }
+}

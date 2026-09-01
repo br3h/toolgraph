@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+
+# Reject a commit message that itself contains something shaped like a secret.
+if command -v gitleaks >/dev/null 2>&1; then
+  if ! gitleaks stdin --config .gitleaks.toml --redact --no-banner < "$1"; then
+    echo "  BLOCKED: the commit message contains a possible secret."
+    exit 1
+  fi
+fi

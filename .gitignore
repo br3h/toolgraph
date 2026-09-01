@@ -1,0 +1,49 @@
+# Environment / secrets — never commit real values. .env.example is the only tracked env file.
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+!.env.example
+
+# OS
+.DS_Store
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+.next/
+out/
+next-env.d.ts
+.vercel/
+
+# Coverage & test artifacts
+coverage/
+playwright-report/
+test-results/
+.playwright/
+
+# Supabase local dev stack
+supabase/.temp/
+supabase/.branches/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# TS incremental
+*.tsbuildinfo
+
+# Sentry
+.sentryclirc
