@@ -41,7 +41,7 @@ export default async function GraphsPage() {
               Each graph wires MCP tools together, type-checked before it runs.
             </p>
           </div>
-          <NewGraphButton />
+          <NewGraphButton testId="new-graph-button" />
         </div>
 
         {error ? (

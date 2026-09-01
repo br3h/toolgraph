@@ -47,3 +47,5 @@ pnpm-debug.log*
 
 # Sentry
 .sentryclirc
+.vercel
+.env*

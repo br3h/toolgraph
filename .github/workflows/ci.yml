@@ -272,6 +272,11 @@ jobs:
           } >> "$GITHUB_ENV"
           echo "::add-mask::$SERVICE"
 
+      # Built here, with the local stack's values baked in, so Playwright
+      # exercises the same production output that gets deployed.
+      - name: Build both apps
+        run: pnpm build
+
       - name: Run smoke test
         run: pnpm test:e2e
 

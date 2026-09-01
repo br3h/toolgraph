@@ -44,9 +44,20 @@ export default defineConfig({
   ...(isRemote
     ? {}
     : {
+        /**
+         * CI runs the PRODUCTION build, not the dev server.
+         *
+         * The dev server legitimately relaxes the CSP — Next's Fast Refresh
+         * compiles at runtime and genuinely needs `unsafe-eval`. Testing against
+         * it would make the security-header assertions meaningless, since they
+         * would be checking a policy that never ships. CI builds both apps in an
+         * earlier step, so this only has to start them.
+         */
         webServer: [
           {
-            command: 'pnpm --filter @toolgraph/engine dev',
+            command: isCI
+              ? 'pnpm --filter @toolgraph/engine start'
+              : 'pnpm --filter @toolgraph/engine dev',
             url: 'http://127.0.0.1:8787/health',
             reuseExistingServer: !isCI,
             timeout: 120_000,
@@ -54,7 +65,9 @@ export default defineConfig({
             stderr: 'pipe',
           },
           {
-            command: 'pnpm --filter @toolgraph/web dev',
+            command: isCI
+              ? 'pnpm --filter @toolgraph/web start'
+              : 'pnpm --filter @toolgraph/web dev',
             url: 'http://127.0.0.1:3000/api/health',
             reuseExistingServer: !isCI,
             timeout: 180_000,
