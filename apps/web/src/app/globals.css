@@ -1,0 +1,187 @@
+@import 'tailwindcss';
+@import '@toolgraph/ui/styles.css';
+
+/* Tailwind v4 discovers utilities by scanning source. The shared UI package
+   lives outside this app's root, so it has to be named explicitly. */
+@source '../../../../packages/ui/src';
+
+/* The manual theme toggle sets data-theme on <html>; teach Tailwind's `dark:`
+   variant to follow it as well as the OS preference. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* ==========================================================================
+   Map the monochrome tokens onto Tailwind's theme so utilities like `bg-bg`
+   and `text-fg-muted` resolve to the same CSS variables the components use.
+   There is exactly one source of truth: packages/ui/src/styles.css.
+   ========================================================================== */
+@theme inline {
+  --color-bg: var(--tg-bg);
+  --color-bg-subtle: var(--tg-bg-subtle);
+  --color-bg-sunken: var(--tg-bg-sunken);
+  --color-bg-raised: var(--tg-bg-raised);
+  --color-bg-inverse: var(--tg-bg-inverse);
+
+  --color-fg: var(--tg-fg);
+  --color-fg-muted: var(--tg-fg-muted);
+  --color-fg-subtle: var(--tg-fg-subtle);
+  --color-fg-inverse: var(--tg-fg-inverse);
+  --color-fg-on-accent: var(--tg-fg-on-accent);
+
+  --color-border: var(--tg-border);
+  --color-border-subtle: var(--tg-border-subtle);
+  --color-border-strong: var(--tg-border-strong);
+
+  --color-accent: var(--tg-accent);
+  --color-accent-hover: var(--tg-accent-hover);
+
+  --color-canvas: var(--tg-canvas-bg);
+  --color-canvas-dot: var(--tg-canvas-dot);
+
+  --radius-sm: var(--tg-radius-sm);
+  --radius-md: var(--tg-radius-md);
+  --radius-lg: var(--tg-radius-lg);
+
+  --shadow-sm: var(--tg-shadow-sm);
+  --shadow-md: var(--tg-shadow-md);
+  --shadow-lg: var(--tg-shadow-lg);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+html {
+  /* The canvas manages its own scrolling; a rubber-banding page underneath it
+     makes panning feel broken. */
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--tg-bg);
+  color: var(--tg-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* One focus treatment everywhere, high contrast in both themes. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--tg-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--tg-radius-sm);
+}
+
+::selection {
+  background: var(--tg-fg);
+  color: var(--tg-bg);
+}
+
+/* Scrollbars, kept inside the ramp rather than left to the OS default. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tg-gray-5) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--tg-border);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--tg-border-strong);
+  background-clip: content-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   reactflow, restyled onto the monochrome ramp.
+   The library ships its own palette; every colour it sets is overridden here.
+   ========================================================================== */
+
+.react-flow__background {
+  background: var(--tg-canvas-bg);
+}
+
+.react-flow__edge-path {
+  stroke: var(--tg-edge);
+  stroke-width: 1.5;
+}
+
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--tg-fg);
+  stroke-width: 2;
+}
+
+.react-flow__connection-path {
+  stroke: var(--tg-fg-muted);
+  stroke-width: 1.5;
+}
+
+.react-flow__handle {
+  width: 9px;
+  height: 9px;
+  background: var(--tg-bg-raised);
+  border: 1.5px solid var(--tg-border-strong);
+  border-radius: 999px;
+}
+
+.react-flow__handle:hover,
+.react-flow__handle.connectingfrom,
+.react-flow__handle.connectingto {
+  background: var(--tg-accent);
+  border-color: var(--tg-accent);
+}
+
+.react-flow__handle-connecting {
+  background: var(--tg-accent);
+}
+
+.react-flow__controls-button {
+  background: var(--tg-bg-raised);
+  border-bottom: 1px solid var(--tg-border-subtle);
+  color: var(--tg-fg);
+  fill: currentColor;
+}
+
+.react-flow__controls-button:hover {
+  background: var(--tg-bg-sunken);
+}
+
+.react-flow__minimap {
+  background: var(--tg-bg-subtle);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius-md);
+}
+
+.react-flow__attribution {
+  background: transparent;
+  color: var(--tg-fg-subtle);
+  font-size: 10px;
+}
+
+.react-flow__node {
+  font-family: var(--font-sans);
+}
+
+/* The one documented exception to the monochrome rule lives in
+   packages/ui/src/styles.css as `.tg-edge-path--invalid`: a rejected connection
+   is drawn with a dashed stroke, because greyscale alone cannot carry that
+   signal at canvas zoom levels. It is a stroke pattern, not a hue. */
