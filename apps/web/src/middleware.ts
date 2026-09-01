@@ -134,9 +134,27 @@ export async function middleware(request: NextRequest) {
       },
     });
 
-    // Calling getUser() is what actually performs the refresh. Its result is
-    // deliberately unused here; pages re-read it themselves.
-    await supabase.auth.getUser();
+    const { data } = await supabase.auth.getUser();
+
+    /**
+     * Route guard, in addition to the check each page already does.
+     *
+     * A server component's `redirect()` is emitted as an RSC instruction on a
+     * 200 once the response has begun streaming, so the page shell is sent
+     * before the browser navigates away. Nothing sensitive is in that shell —
+     * the data behind it is scoped by RLS and `anon` is revoked outright — but
+     * a real 307 issued before any page code runs is both cleaner and one more
+     * layer that has to fail before anything is exposed.
+     */
+    const path = request.nextUrl.pathname;
+    const isProtected = path === '/graphs' || path.startsWith('/graphs/');
+
+    if (isProtected && !data.user) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
   }
 
   response.headers.set('Content-Security-Policy', csp);
