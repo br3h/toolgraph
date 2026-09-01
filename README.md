@@ -274,6 +274,43 @@ requires one click in the dashboard — Render has no CLI-only path for it:
 3. Set the environment variables it lists as `sync: false` (they are never
    committed). `render.yaml` names exactly which ones.
 
+### Steps that need you
+
+Four things cannot be done from a terminal, because each needs a browser
+session or a dashboard click:
+
+1. **Apply the migrations to the hosted Supabase project.** `supabase login`
+   opens a browser for device authorisation, so it cannot run unattended:
+
+   ```bash
+   supabase login
+   supabase link --project-ref <the subdomain of your NEXT_PUBLIC_SUPABASE_URL>
+   supabase db push
+   ```
+
+   Until this runs, signup fails, because the tables do not exist yet. The
+   migrations themselves are verified: CI applies them from scratch and runs
+   the RLS isolation tests against them on every push.
+
+2. **Create the Render Blueprint.** Render has no CLI path for the first
+   creation. Dashboard → **New** → **Blueprint** → point it at this repo; it
+   reads `render.yaml`. Then set the six variables that file marks
+   `sync: false`, taking the values from your `.env.local`:
+   `ENGINE_ALLOWED_ORIGINS`, `SENTRY_DSN_BACKEND`, `UPSTASH_REDIS_REST_URL`,
+   `UPSTASH_REDIS_REST_TOKEN`, `SUPABASE_URL` and `SUPABASE_SECRET_KEY`.
+
+3. **Enable the GitHub auth provider.** Supabase dashboard → Authentication →
+   Providers → GitHub. It needs a GitHub OAuth app (Settings → Developer
+   settings → OAuth Apps) whose callback URL is
+   `https://<your-project-ref>.supabase.co/auth/v1/callback`. Email and
+   password sign-in works without this; only the GitHub button depends on it.
+
+   While you are there, add your deployment URL to Authentication → URL
+   Configuration → Redirect URLs, or OAuth will refuse to redirect back.
+
+4. **Add the DNS records below**, once you are ready to point `toolgraph.dev`
+   at the deployment.
+
 ### Custom domain — DNS records to add in Namecheap
 
 For **toolgraph.dev**, in Namecheap → Domain List → Manage → Advanced DNS.
@@ -309,14 +346,29 @@ and add `https://toolgraph.dev` to `ENGINE_ALLOWED_ORIGINS` in Render. Also add
 `https://toolgraph.dev/auth/callback` to Supabase → Authentication → URL
 Configuration → Redirect URLs.
 
+### Current deployment
+
+| Service         | URL                                                   | Status  |
+| --------------- | ----------------------------------------------------- | ------- |
+| Web (Vercel)    | https://toolgraph-af2yda6dx-br3hs-projects.vercel.app | live    |
+| Engine (Render) | not created yet — see "Steps that need you" above     | pending |
+
+The Vercel project is linked to this repository, so every push to `main`
+deploys automatically. Its root directory is `apps/web`, and all fourteen
+environment variables are set — `NEXT_PUBLIC_*` as config, because Next inlines
+them at build time and a value stored as a secret would not be readable then,
+and everything else as secrets.
+
 ### Health checks
 
-| Endpoint                              | Returns                                    |
-| ------------------------------------- | ------------------------------------------ |
-| `https://toolgraph.dev/api/health`    | `200` with commit SHA, build time, version |
-| `https://engine.toolgraph.dev/health` | `200` with commit SHA, build time, uptime  |
+| Endpoint                     | Returns                                    |
+| ---------------------------- | ------------------------------------------ |
+| `/api/health` on the web app | `200` with commit SHA, build time, version |
+| `/health` on the engine      | `200` with commit SHA, build time, uptime  |
 
 Both are unauthenticated, cheap, and safe to point a free uptime monitor at.
+The web one already reports the deployed commit and which integrations it can
+see.
 
 ---
 
