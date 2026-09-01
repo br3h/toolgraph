@@ -25,13 +25,18 @@
     "test:rls": "vitest run --config vitest.rls.config.ts",
     "audit:ci": "pnpm audit --audit-level high --prod",
     "secrets:scan": "gitleaks dir . --config .gitleaks.toml --redact --no-banner",
-    "prepare": "husky"
+    "prepare": "husky",
+    "verify:secrets": "node scripts/check-client-bundle.mjs",
+    "verify:secrets:values": "node scripts/check-client-bundle.mjs --with-values",
+    "verify:deploy": "node scripts/verify-deploy.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
     "@playwright/test": "1.62.1",
+    "@supabase/supabase-js": "2.112.4",
     "@types/node": "22.20.1",
     "@vitest/coverage-v8": "4.1.11",
+    "dotenv": "17.2.3",
     "eslint": "9.39.5",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-react-hooks": "7.1.1",

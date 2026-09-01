@@ -1,0 +1,78 @@
+# Render Blueprint for the toolgraph execution engine.
+#
+# Creating a Blueprint the first time requires one click in the Render dashboard
+# (New -> Blueprint -> point at this repo). Render has no CLI-only path for the
+# initial creation. After that, every push to `main` redeploys automatically via
+# Render's own GitHub integration.
+#
+# Every variable below marked `sync: false` must be set BY HAND in the Render
+# dashboard (Service -> Environment). They are never committed to this repo.
+# The dashboard is the only place their values exist outside your .env.local.
+
+services:
+  - type: web
+    name: toolgraph-engine
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    rootDir: .
+    autoDeploy: true
+
+    # Render's free plan defaults to npm. Activate the pinned pnpm and build only
+    # the engine — tsup bundles the workspace packages it imports, so the shared
+    # packages need no separate build step.
+    buildCommand: >-
+      corepack enable &&
+      corepack prepare pnpm@10.34.5 --activate &&
+      pnpm install --frozen-lockfile &&
+      pnpm --filter @toolgraph/engine build
+
+    startCommand: node apps/engine/dist/index.js
+
+    # Render probes this until it returns 200 before routing traffic to a new
+    # deploy, and uses it to decide the service is healthy.
+    healthCheckPath: /health
+
+    envVars:
+      # ---- Set automatically by this blueprint --------------------------------
+      - key: NODE_VERSION
+        value: 22.22.2
+      - key: NODE_ENV
+        value: production
+      # Render injects PORT itself; the engine must bind to it and to 0.0.0.0.
+      - key: ENGINE_ALLOW_PRIVATE_NETWORK
+        # Hard off in production. The SSRF guard depends on this staying false,
+        # and the engine refuses to boot if it is true while NODE_ENV=production.
+        value: 'false'
+      - key: RENDER_GIT_COMMIT
+        # Render populates this; declared so /health can report the deployed SHA.
+        sync: false
+
+      # ---- MUST be set by hand in the Render dashboard ------------------------
+      # Comma-separated browser origins allowed to call the engine. Never "*".
+      # Production value: https://toolgraph.dev,https://www.toolgraph.dev
+      - key: ENGINE_ALLOWED_ORIGINS
+        sync: false
+      # Sentry DSN for the engine's own Sentry project (not the web one).
+      - key: SENTRY_DSN_BACKEND
+        sync: false
+      # Upstash Redis REST credentials, used for per-user and per-IP rate limits.
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      # Supabase, used to verify the caller's JWT and to write execution_runs.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+
+# Notes on the free plan, which the engine is designed around:
+#   * The service sleeps after 15 minutes of inactivity and drops open
+#     connections when it does. Every endpoint is therefore stateless per
+#     request, and a test-run streams over SSE on the same request that started
+#     it rather than assuming a persistent socket survives.
+#   * A cold start takes roughly 30-50 seconds. The web UI shows an explicit
+#     "waking up the execution engine" state while it waits.
+#   * Free services get no persistent disk. Nothing is written to the filesystem.

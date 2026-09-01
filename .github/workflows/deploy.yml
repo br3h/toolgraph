@@ -1,0 +1,133 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      skip_verification:
+        description: 'Skip health verification (use only when a provider is having an outage)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: write
+
+env:
+  # Public URLs only. No credential is needed to verify a deploy, which is
+  # exactly why this workflow is the verification path rather than the build
+  # path — see the README section "Which deploy path is used, and why".
+  WEB_HEALTH_URL: https://toolgraph.dev/api/health
+  ENGINE_HEALTH_URL: https://engine.toolgraph.dev/health
+  # Fallbacks used until the custom domain's DNS is live. Set these two as
+  # repository *variables* (not secrets) to the .vercel.app / .onrender.com URLs.
+  WEB_HEALTH_URL_FALLBACK: ${{ vars.WEB_HEALTH_URL_FALLBACK }}
+  ENGINE_HEALTH_URL_FALLBACK: ${{ vars.ENGINE_HEALTH_URL_FALLBACK }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Vercel's own GitHub integration builds and deploys apps/web, and Render's
+  # own GitHub integration builds and deploys apps/engine. Neither needs a
+  # long-lived token stored here.
+  #
+  # This job's job is to prove they actually did it, and to fail loudly if the
+  # commit that merged is not the commit that is serving traffic.
+  # ---------------------------------------------------------------------------
+  verify-deploy:
+    name: Verify both services are serving this commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    if: ${{ !inputs.skip_verification }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Wait for the web app to report this commit
+        run: |
+          node scripts/verify-deploy.mjs \
+            --name "web" \
+            --url "${WEB_HEALTH_URL}" \
+            --fallback "${WEB_HEALTH_URL_FALLBACK}" \
+            --commit "${GITHUB_SHA}" \
+            --timeout-seconds 900
+
+      - name: Wake and verify the execution engine
+        # Render's free plan sleeps after 15 minutes, so the first request can
+        # take ~50s just to boot. The script accounts for that before it starts
+        # judging whether the commit matches.
+        run: |
+          node scripts/verify-deploy.mjs \
+            --name "engine" \
+            --url "${ENGINE_HEALTH_URL}" \
+            --fallback "${ENGINE_HEALTH_URL_FALLBACK}" \
+            --commit "${GITHUB_SHA}" \
+            --timeout-seconds 900 \
+            --cold-start
+
+      - name: Summarise
+        if: always()
+        run: |
+          {
+            echo "### Deploy verification"
+            echo ""
+            echo "| Service | Health endpoint |"
+            echo "| ------- | --------------- |"
+            echo "| web     | ${WEB_HEALTH_URL} |"
+            echo "| engine  | ${ENGINE_HEALTH_URL} |"
+            echo ""
+            echo "Commit: \`${GITHUB_SHA}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # Optional: let GitHub Actions own the Vercel deploy instead of Vercel's own
+  # integration. Off by default. To turn it on, set the repository variable
+  # USE_GITHUB_VERCEL_DEPLOY to "true" and add VERCEL_TOKEN, VERCEL_ORG_ID and
+  # VERCEL_PROJECT_ID as repository secrets.
+  #
+  # The default is off because the native integration gives free per-PR preview
+  # deployments and needs no long-lived credential stored in this repo.
+  # ---------------------------------------------------------------------------
+  vercel-deploy:
+    name: Deploy web to Vercel (opt-in)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    if: ${{ vars.USE_GITHUB_VERCEL_DEPLOY == 'true' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10.34.5'
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22.22.2'
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Pull Vercel production environment
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: pnpm dlx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: pnpm dlx vercel@latest build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy prebuilt output
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: pnpm dlx vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"

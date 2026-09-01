@@ -57,7 +57,14 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/*.test.ts', '**/*.test.tsx', 'e2e/**/*.ts', '**/vitest.config.ts'],
+    files: [
+      '**/*.test.ts',
+      '**/*.test.tsx',
+      'e2e/**/*.ts',
+      '**/vitest.config.ts',
+      'scripts/**/*.mjs',
+      'playwright.config.ts',
+    ],
     rules: {
       'no-console': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
@@ -66,6 +73,13 @@ export default tseslint.config(
   {
     files: ['**/*.js', '**/*.mjs', '**/*.cjs'],
     ...tseslint.configs.disableTypeChecked,
+  },
+  {
+    // next.config.js must stay CommonJS: Next loads it before any ESM loader is
+    // in play, and the conditional Sentry wrapper has to be required lazily so
+    // the package is not resolved at all when SENTRY_AUTH_TOKEN is absent.
+    files: ['apps/web/next.config.js'],
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
   prettier,
 );
