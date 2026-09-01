@@ -1,0 +1,86 @@
+# Local Supabase stack for toolgraph.
+#
+# Deliberately minimal and safe to commit: no project ref, no API keys, no
+# account-specific URLs. Everything here describes the local dev stack that
+# `supabase start` brings up on 127.0.0.1. Linking to a hosted project writes
+# its ref to supabase/.temp, which .gitignore already excludes.
+#
+# Reference: https://supabase.com/docs/guides/local-development/cli/config
+project_id = "toolgraph"
+
+[api]
+enabled = true
+port = 54321
+# `public` holds the four application tables; `graphql_public` is Supabase's
+# own pg_graphql endpoint and is left exposed to match the hosted default.
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+# Caps accidental full-table reads. Graph lists are paginated well below this.
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+# Must match the hosted project's `show server_version;`.
+major_version = 17
+
+[db.migrations]
+enabled = true
+schema_paths = []
+
+[realtime]
+enabled = true
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1"
+
+# Emails are captured locally rather than delivered; the web UI is on this port.
+[local_smtp]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3000"
+additional_redirect_urls = ["http://127.0.0.1:3000"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+# Every row in `public` is keyed to a real auth.users id, and the RLS policies
+# only ever grant to `authenticated`. Anonymous sign-ins would hand out a uid
+# with no user behind it, so they stay off.
+enable_anonymous_sign_ins = false
+enable_manual_linking = false
+minimum_password_length = 8
+password_requirements = "lower_upper_letters_digits"
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+# Off locally so `auth.admin.createUser` + password sign-in works in tests
+# without round-tripping through the mail catcher. Hosted projects keep this on.
+enable_confirmations = false
+secure_password_change = false
+max_frequency = "1s"
+
+[auth.sms]
+enable_signup = false
+enable_confirmations = false
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
+inspector_port = 8083
+deno_version = 2
+
+# Logflare is heavy and nothing in this project reads it. Turning it off keeps
+# `supabase start` fast enough to run in CI.
+[analytics]
+enabled = false

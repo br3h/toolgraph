@@ -44,6 +44,16 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      # The Python codegen tests compile what they generate, and validate it
+      # against pydantic when it is importable. Installing it here means that
+      # check actually runs in CI instead of silently skipping.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pydantic for the codegen tests
+        run: python -m pip install --quiet 'pydantic>=2'
+
       - name: Lint
         run: pnpm lint
 

@@ -161,3 +161,252 @@
 .tg-edge-path--pending {
   stroke-dasharray: 2 3;
 }
+
+/* ==========================================================================
+   Component layer.
+   --------------------------------------------------------------------------
+   The components in this package set layout and token wiring inline (see
+   `src/lib/style.ts`) and leave everything a pseudo-class or pseudo-element
+   touches to the rules below, because inline styles cannot express `:hover`,
+   `:focus-visible`, `:disabled`, `::placeholder` or `::backdrop`.
+
+   Every colour here is a `var(--tg-*)`. Nothing below introduces a literal.
+   ========================================================================== */
+
+/* Present for assistive technology, absent from the visual layout. */
+.tg-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- Button ------------------------------------------------------------- */
+
+.tg-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  background: var(--tg-btn-bg);
+  color: var(--tg-btn-fg);
+  border: var(--tg-btn-border-width) solid var(--tg-btn-border);
+  font-family: inherit;
+  font-weight: var(--tg-btn-weight);
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.tg-btn:hover:not(:disabled) {
+  background: var(--tg-btn-bg-hover);
+  border-color: var(--tg-btn-border-hover);
+}
+
+.tg-btn:focus-visible {
+  outline: 2px solid var(--tg-focus-ring);
+  outline-offset: 2px;
+}
+
+.tg-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tg-btn__label {
+  display: inline-flex;
+  align-items: center;
+  gap: inherit;
+}
+
+/* Overlaid rather than inserted, so the label keeps the button's width. */
+.tg-btn__spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- Form controls ------------------------------------------------------ */
+
+.tg-control {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 10px;
+  background: var(--tg-bg);
+  color: var(--tg-fg);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius-md);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.tg-control::placeholder {
+  color: var(--tg-fg-subtle);
+}
+
+.tg-control:hover:not(:disabled) {
+  border-color: var(--tg-border-strong);
+}
+
+.tg-control:focus-visible {
+  border-color: var(--tg-border-strong);
+  outline: 2px solid var(--tg-focus-ring);
+  outline-offset: 1px;
+}
+
+.tg-control:disabled {
+  background: var(--tg-bg-sunken);
+  color: var(--tg-fg-muted);
+  cursor: not-allowed;
+}
+
+/* Invalid is a heavier outline, never a colour — the message beside it does
+   the talking. */
+.tg-control--invalid {
+  border-width: 2px;
+  border-color: var(--tg-border-strong);
+}
+
+.tg-control--textarea {
+  min-height: 0;
+  resize: vertical;
+}
+
+.tg-control--select {
+  appearance: none;
+  padding-right: 30px;
+  cursor: pointer;
+}
+
+.tg-select__chevron {
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  color: var(--tg-fg-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* ---- Spinner and skeleton ----------------------------------------------- */
+
+.tg-spinner > svg {
+  animation: tg-spin 720ms linear infinite;
+}
+
+@keyframes tg-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.tg-skeleton {
+  position: relative;
+  overflow: hidden;
+}
+
+.tg-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--tg-bg-subtle), transparent);
+  transform: translateX(-100%);
+  animation: tg-skeleton-shimmer 1400ms ease-in-out infinite;
+}
+
+@keyframes tg-skeleton-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* ---- Modal -------------------------------------------------------------- */
+
+.tg-modal {
+  width: calc(100% - 32px);
+  padding: 0;
+  background: var(--tg-bg-raised);
+  color: var(--tg-fg);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius-lg);
+  box-shadow: var(--tg-shadow-lg);
+}
+
+.tg-modal::backdrop {
+  background: var(--tg-overlay);
+}
+
+.tg-modal__panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+}
+
+.tg-modal__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--tg-border-subtle);
+}
+
+.tg-modal__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.tg-modal__description {
+  margin: 4px 0 0;
+  color: var(--tg-fg-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.tg-modal__body {
+  padding: 16px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.tg-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--tg-bg-subtle);
+  border-top: 1px solid var(--tg-border-subtle);
+}
+
+/* ---- Reduced motion ------------------------------------------------------
+   The spinner keeps turning: it is the only signal that work is still in
+   flight, so it slows down rather than stopping. Decorative motion goes.
+   ------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .tg-btn {
+    transition: none;
+  }
+
+  .tg-spinner > svg {
+    animation-duration: 2400ms;
+  }
+
+  .tg-skeleton::after {
+    animation: none;
+  }
+}

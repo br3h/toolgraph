@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true
+  },
+  // The RLS suite lives outside every workspace package, so `pnpm -r typecheck`
+  // never reaches it. This project exists so the file is still checked:
+  //   pnpm exec tsc -p supabase/tsconfig.json
+  // The vitest config is pulled in from the repo root because it belongs to this
+  // suite and has nowhere else to be checked either.
+  "include": ["tests/**/*.ts", "../vitest.rls.config.ts"]
+}
