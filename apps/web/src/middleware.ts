@@ -152,7 +152,11 @@ export async function middleware(request: NextRequest) {
      * layer that has to fail before anything is exposed.
      */
     const path = request.nextUrl.pathname;
-    const isProtected = path === '/graphs' || path.startsWith('/graphs/');
+    const isProtected =
+      path === '/graphs' ||
+      path.startsWith('/graphs/') ||
+      path === '/billing' ||
+      path.startsWith('/billing/');
 
     if (isProtected && !data.user) {
       const url = request.nextUrl.clone();
