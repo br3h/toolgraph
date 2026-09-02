@@ -100,29 +100,64 @@ field and nowhere else.
 
 ---
 
-## 3. Point the domain's canonical URL at one hostname
+## 3. Make the canonical hostname the one that actually serves the site
 
-**What it fixes.** `toolgraph.dev` currently 308-redirects to
-`www.toolgraph.dev`, so both hostnames serve the same pages. The app now emits a
-`<link rel="canonical">` built from `NEXT_PUBLIC_SITE_URL`, which resolves that
-for search engines — but only if that variable matches the hostname you actually
-want indexed.
+**What is wrong right now.** `toolgraph.dev` and `www.toolgraph.dev` both work,
+but they are not equals: Vercel serves the site on `www` and 308-redirects the
+apex to it. Meanwhile `NEXT_PUBLIC_SITE_URL` is set to the apex, and that
+variable is what every canonical URL, every sitemap entry and the `og:image` URL
+are built from.
 
-1. Go to <https://vercel.com/dashboard> → **toolgraph** → **Settings** →
-   **Environment Variables**.
-2. Find `NEXT_PUBLIC_SITE_URL`.
-3. Confirm it reads exactly `https://www.toolgraph.dev` — with the `www`, with
-   `https`, and **with no trailing slash**.
-4. If you change it, redeploy (Deployments → ⋯ → Redeploy).
+So the site currently tells search engines "the real address of this page is
+`https://toolgraph.dev/pricing`", and that address answers "no it isn't, go to
+`www`". Nothing is visibly broken — a person clicking either one lands on the
+right page — but it is a contradictory signal, and it means Google decides for
+itself which hostname to index rather than being told.
 
-**How to check it worked.** Run this and confirm the URL has no trailing slash
-and is the `www` form:
+This predates the current release; it only became visible because there was no
+canonical tag at all before.
+
+**The fix, and it is two clicks.** Make the apex the primary domain, so the
+redirect runs the other way and matches what the code already says.
+
+1. Go to <https://vercel.com/dashboard> and open the **toolgraph** project.
+2. Click **Settings**, then **Domains** in the left column.
+3. You will see both `toolgraph.dev` and `www.toolgraph.dev`. One of them is
+   marked as redirecting to the other — currently the apex redirects to `www`.
+4. Find `toolgraph.dev` and set it as the primary: use the **⋯** menu on its row
+   and choose **Set as primary domain** (some Vercel versions phrase this as
+   editing `www.toolgraph.dev` and setting **Redirect to** → `toolgraph.dev`).
+5. Save. **No redeploy is needed** — this is a routing change, not a build one.
+
+**If you would rather keep `www` as the public address**, that is equally fine —
+it is a taste call, not a technical one. In that case do the opposite:
+
+1. Vercel → **toolgraph** → **Settings** → **Environment Variables**.
+2. Change `NEXT_PUBLIC_SITE_URL` from `https://toolgraph.dev` to
+   `https://www.toolgraph.dev` (no trailing slash).
+3. Redeploy (**Deployments** → **⋯** → **Redeploy**).
+4. Add a repository variable so the deploy check agrees: GitHub → the repo →
+   **Settings** → **Secrets and variables** → **Actions** → **Variables** tab →
+   **New repository variable**, named `SITE_URL`, value
+   `https://www.toolgraph.dev`.
+5. Two other places name the site and should be checked for consistency:
+   - **Render** → the engine service → **Environment** →
+     `ENGINE_ALLOWED_ORIGINS` should list whichever host browsers will use.
+   - **Supabase** → **Authentication** → **URL Configuration** → the **Site URL**
+     and **Redirect URLs** should match, or GitHub sign-in will bounce.
+
+**How to check it worked.** Run this from any terminal:
 
 ```
-curl -s https://www.toolgraph.dev/ | grep -o '<link rel="canonical"[^>]*>'
+node scripts/verify-canonical.mjs --site https://toolgraph.dev
 ```
 
-**Is it a secret?** No. It is public by design and already in the browser bundle.
+(or with `--site https://www.toolgraph.dev` if you took the second route). It
+prints one OK line, or tells you exactly what disagrees. The same check runs on
+every deploy — it does not block the deploy, but it writes a warning into the
+workflow summary until this is resolved.
+
+**Is it a secret?** No. Both hostnames are public.
 
 ---
 

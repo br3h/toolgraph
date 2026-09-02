@@ -24,6 +24,10 @@ env:
   # path — see the README section "Which deploy path is used, and why".
   WEB_HEALTH_URL: https://toolgraph.dev/api/health
   ENGINE_HEALTH_URL: https://engine.toolgraph.dev/health
+  # The host the site declares as canonical, which must be the host that
+  # actually serves it. Kept as a repository variable so it can be corrected
+  # without a code change on the day the domain's primary is flipped.
+  SITE_URL: ${{ vars.SITE_URL || 'https://toolgraph.dev' }}
   # Fallbacks used until the custom domain's DNS is live. Set these two as
   # repository *variables* (not secrets) to the .vercel.app / .onrender.com URLs.
   WEB_HEALTH_URL_FALLBACK: ${{ vars.WEB_HEALTH_URL_FALLBACK }}
@@ -68,6 +72,17 @@ jobs:
             --timeout-seconds 900 \
             --cold-start
 
+      # Deliberately non-blocking. A canonical host that redirects is an SEO
+      # defect, not a broken deploy — refusing to finish the deploy over it
+      # would be disproportionate, and would leave the site on older code for a
+      # problem that harms nothing a user can see. It is loud in the log and in
+      # the job summary instead, and it stays loud until somebody fixes it.
+      - name: Check the canonical host actually serves the site
+        id: canonical
+        continue-on-error: true
+        run: |
+          node scripts/verify-canonical.mjs --site "${SITE_URL:-https://toolgraph.dev}"
+
       - name: Summarise
         if: always()
         run: |
@@ -80,6 +95,13 @@ jobs:
             echo "| engine  | ${ENGINE_HEALTH_URL} |"
             echo ""
             echo "Commit: \`${GITHUB_SHA}\`"
+            echo ""
+            if [ "${{ steps.canonical.outcome }}" != "success" ]; then
+              echo "> **Canonical host mismatch.** The host named by NEXT_PUBLIC_SITE_URL"
+              echo "> redirects instead of serving, so every canonical URL, sitemap entry"
+              echo "> and og:image points at a redirect. See the step log, and"
+              echo "> MANUAL_ACTIONS.md section 3, for the two-click fix."
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ---------------------------------------------------------------------------
