@@ -99,3 +99,88 @@ test.describe('unauthenticated access', () => {
     await expect(page.getByTestId('login-email')).toBeVisible();
   });
 });
+
+test.describe('branding and the homepage demo', () => {
+  test('the document title is exactly the wordmark', async ({ page }) => {
+    await page.goto('/');
+    expect(await page.title()).toBe('Toolgraph');
+  });
+
+  test('the title carries no route suffix on other pages either', async ({ page }) => {
+    for (const path of ['/login', '/signup', '/pricing']) {
+      await page.goto(path);
+      expect(await page.title(), `${path} should not append a suffix`).toBe('Toolgraph');
+    }
+  });
+
+  test('the favicon is served directly and declared with sizes', async ({ page, request }) => {
+    const ico = await request.get('/favicon.ico');
+    expect(ico.status()).toBe(200);
+    expect(ico.headers()['content-type']).toContain('icon');
+    // A multi-size ICO, not a one-pixel placeholder.
+    expect((await ico.body()).byteLength).toBeGreaterThan(1000);
+
+    await page.goto('/');
+    // Next's file convention emits sizes and type; a metadata override would
+    // replace these with a single bare tag, which is what broke it before.
+    const declared = await page
+      .locator('link[rel="icon"], link[rel="apple-touch-icon"]')
+      .evaluateAll((links) =>
+        links.map((l) => ({
+          href: l.getAttribute('href'),
+          sizes: l.getAttribute('sizes'),
+          type: l.getAttribute('type'),
+        })),
+      );
+
+    expect(declared.length).toBeGreaterThanOrEqual(2);
+    expect(declared.every((l) => l.sizes && l.type)).toBe(true);
+    expect(declared.some((l) => (l.href ?? '').includes('favicon.ico'))).toBe(true);
+  });
+
+  test('the homepage demo is drawn live, with no video element', async ({ page }) => {
+    await page.goto('/');
+
+    // The old implementation. None of it may come back.
+    await expect(page.locator('video')).toHaveCount(0);
+    await expect(page.locator('source')).toHaveCount(0);
+
+    const demo = page.getByRole('img', { name: /connection is drawn from createUser/i });
+    await expect(demo).toBeVisible();
+
+    // Populated on first paint rather than an empty frame waiting for hydration.
+    await expect(demo.locator('text=createUser')).toBeVisible();
+    await expect(demo.locator('text=sendEmail')).toBeVisible();
+  });
+
+  test('the demo animates on its own after a hard reload', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: 'networkidle' });
+
+    const demo = page.getByRole('img', { name: /connection is drawn from createUser/i });
+    await expect(demo).toBeVisible();
+
+    // No interaction of any kind: the mismatch explanation must appear by
+    // itself within one cycle of the timeline.
+    await expect(page.locator('text=That connection would not type-check')).toBeVisible({
+      timeout: 20_000,
+    });
+
+    // And the sequence must move on rather than freezing on that frame.
+    await expect(page.locator('text=Types compatible')).toBeVisible({ timeout: 20_000 });
+  });
+
+  test('the homepage logs no console errors', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') errors.push(message.text());
+    });
+    page.on('pageerror', (error) => errors.push(String(error)));
+
+    await page.goto('/', { waitUntil: 'networkidle' });
+    // Let a full cycle of the demo run, so a timer or transition fault surfaces.
+    await page.waitForTimeout(12_000);
+
+    expect(errors, `console errors:\n${errors.join('\n')}`).toEqual([]);
+  });
+});

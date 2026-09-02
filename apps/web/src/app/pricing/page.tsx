@@ -7,7 +7,6 @@ import { getCurrentUser } from '@/lib/supabase/server';
 import { PAYMENT_ADDRESSES, PLAN_INTERVAL_DAYS, PLAN_PRICE_USD } from '@/lib/billing/plan';
 
 export const metadata: Metadata = {
-  title: 'Pricing',
   description:
     'Toolgraph is free and MIT licensed. Pro is $15 a month, paid in cryptocurrency — there is no card processor, and a subscription starts once the transaction confirms on-chain.',
 };

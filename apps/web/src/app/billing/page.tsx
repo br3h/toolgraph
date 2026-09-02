@@ -1,4 +1,3 @@
-import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
@@ -15,7 +14,6 @@ import {
 import { getCryptoAmountForUsd } from '@/lib/billing/price';
 import { getSubscriptionState, type SubscriptionState } from '@/lib/billing/subscription';
 
-export const metadata: Metadata = { title: 'Billing' };
 export const dynamic = 'force-dynamic';
 
 /**

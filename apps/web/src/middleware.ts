@@ -73,10 +73,9 @@ function buildCsp(nonce: string, isDev: boolean): string {
 
     'img-src': ["'self'", 'data:', 'blob:', 'https:'],
 
-    // The landing page demo video. Same-origin only: it would otherwise fall
-    // back to `default-src`, and being explicit here is what makes it obvious
-    // that moving the recording to a CDN needs this line updated too.
-    'media-src': ["'self'", 'blob:'],
+    // No media element is served any more — the homepage demo is drawn as SVG.
+    // Kept explicit and at 'self' so re-introducing one is a deliberate edit.
+    'media-src': ["'self'"],
     'font-src': ["'self'", 'data:'],
     'connect-src': connectSources(),
     'worker-src': ["'self'", 'blob:'],

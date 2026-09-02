@@ -5,11 +5,9 @@ import { redirect } from 'next/navigation';
 import { ThemeToggle } from '@toolgraph/ui';
 
 import { getCurrentUser } from '@/lib/supabase/server';
-import { publicEnv } from '@/lib/public-env';
-import { DemoVideo } from '@/components/DemoVideo';
+import { DemoAnimation } from '@/components/DemoAnimation';
 
 export const metadata: Metadata = {
-  title: 'Toolgraph — type-checked MCP tool graphs',
   description:
     "Wire MCP tools together on a canvas. Every connection is checked against the tools' real JSON Schemas before it runs, and exports to TypeScript or Python you own outright.",
 };
@@ -17,93 +15,6 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 const REPO = 'https://github.com/br3h/toolgraph';
-
-/**
- * The problem, drawn.
- *
- * Hand-built from divs and one inline SVG rather than mounting reactflow: the
- * landing page should not pay for the canvas bundle, and a static diagram is
- * honest in a way a fabricated screenshot would not be. The dashed connector is
- * the same convention the real canvas uses for a rejected connection.
- */
-function MismatchDiagram() {
-  return (
-    <div
-      className="relative rounded-[var(--tg-radius-lg)] border border-border bg-bg-raised p-6 sm:p-8"
-      role="img"
-      aria-label="Two tools on a canvas. createUser outputs a numeric id, sendEmail expects a string userId, and Toolgraph rejects the connection with the message: field userId expects string, but createUser provides number."
-    >
-      <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:gap-0">
-        <div className="w-full rounded-[var(--tg-radius-md)] border border-border bg-bg p-3 sm:w-[46%]">
-          <p className="text-[11px] font-semibold tracking-tight">createUser</p>
-          <p className="mt-0.5 text-[10px] text-fg-subtle">users server</p>
-          <div className="mt-2.5 border-t border-border-subtle pt-2">
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-fg-subtle">
-              Output
-            </p>
-            <div className="mt-1 flex items-center justify-between gap-2">
-              <span className="font-mono text-[11px] text-fg">user.id</span>
-              <span className="font-mono text-[10px] text-fg-muted">number</span>
-            </div>
-            <div className="mt-0.5 flex items-center justify-between gap-2">
-              <span className="font-mono text-[11px] text-fg">user.email</span>
-              <span className="font-mono text-[10px] text-fg-muted">string</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex shrink-0 items-center justify-center py-2 sm:w-[8%] sm:py-0">
-          <svg
-            width="100%"
-            height="28"
-            viewBox="0 0 60 28"
-            fill="none"
-            aria-hidden="true"
-            className="text-fg-muted"
-          >
-            {/* Dashed: the same signal the canvas uses for a connection that
-                failed its type check. Pattern, not colour. */}
-            <path d="M2 14 H58" stroke="currentColor" strokeWidth="1.5" strokeDasharray="6 4" />
-            <circle cx="2" cy="14" r="2.5" fill="currentColor" />
-            <circle cx="58" cy="14" r="2.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
-          </svg>
-        </div>
-
-        <div className="w-full rounded-[var(--tg-radius-md)] border border-border bg-bg p-3 sm:w-[46%]">
-          <p className="text-[11px] font-semibold tracking-tight">sendEmail</p>
-          <p className="mt-0.5 text-[10px] text-fg-subtle">mail server</p>
-          <div className="mt-2.5 border-t border-border-subtle pt-2">
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-fg-subtle">
-              Input
-            </p>
-            <div className="mt-1 flex items-center justify-between gap-2">
-              <span className="font-mono text-[11px] text-fg">
-                userId<span className="font-bold">*</span>
-              </span>
-              <span className="font-mono text-[10px] text-fg-muted">string</span>
-            </div>
-            <div className="mt-0.5 flex items-center justify-between gap-2">
-              <span className="font-mono text-[11px] text-fg">
-                subject<span className="font-bold">*</span>
-              </span>
-              <span className="font-mono text-[10px] text-fg-muted">string</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-5 border-l-2 border-fg pl-3">
-        <p className="text-xs font-semibold tracking-tight">That connection would not type-check</p>
-        <p className="mt-1 text-xs leading-relaxed text-fg-muted">
-          Field <code className="font-mono text-fg">userId</code> expects{' '}
-          <code className="font-mono text-fg">string</code>, but{' '}
-          <code className="font-mono text-fg">createUser</code> provides{' '}
-          <code className="font-mono text-fg">number</code>.
-        </p>
-      </div>
-    </div>
-  );
-}
 
 function Feature({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -198,19 +109,8 @@ export default async function LandingPage() {
             </a>
           </div>
 
-          {/*
-            The recording carries the pitch far better than the diagram can — it
-            shows the connection being drawn and refused in real time. The
-            diagram stays as the fallback, so a missing or failing video is
-            invisible to visitors rather than a black rectangle.
-          */}
           <div className="mt-14">
-            <DemoVideo
-              src={publicEnv.demoVideoUrl}
-              poster={publicEnv.demoVideoPoster}
-              caption="Connecting two MCP tools. The mismatched field is refused as the connection is drawn."
-              fallback={<MismatchDiagram />}
-            />
+            <DemoAnimation caption="Drawn live in the browser. The mismatch is refused as the connection is made." />
           </div>
         </section>
 

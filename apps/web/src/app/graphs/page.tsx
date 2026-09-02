@@ -1,4 +1,3 @@
-import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { EmptyState } from '@toolgraph/ui';
 
@@ -8,7 +7,6 @@ import { NewGraphButton } from '@/components/NewGraphButton';
 import { createClient, getCurrentUser } from '@/lib/supabase/server';
 import { parseDocument } from '@/lib/graph-document';
 
-export const metadata: Metadata = { title: 'Your graphs' };
 export const dynamic = 'force-dynamic';
 
 export default async function GraphsPage() {

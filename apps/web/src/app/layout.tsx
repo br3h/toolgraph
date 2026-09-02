@@ -20,14 +20,28 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
-  title: {
-    default: 'Toolgraph',
-    template: '%s · Toolgraph',
-  },
+  /**
+   * A plain string, deliberately: no `template`.
+   *
+   * A template would append a suffix to every route's own title, so the tab
+   * would read "Sign in · Toolgraph" rather than the exact wordmark. The brand
+   * is the title on every page, so per-route titles are removed rather than
+   * overridden here.
+   */
+  title: 'Toolgraph',
   description:
     'Wire MCP tools together on a canvas, type-checked against their real JSON Schemas, then export the result as code you own.',
   applicationName: 'Toolgraph',
-  icons: { icon: '/toolgraph.png', apple: '/toolgraph.png' },
+  /*
+   * `icons` is intentionally NOT set.
+   *
+   * Declaring it here overrides Next's file-based convention and emitted a bare
+   * <link rel="icon" href="/toolgraph.png"> — a 512px image with no `sizes` or
+   * `type`, which browsers pick badly for a 16px tab slot — while /favicon.ico
+   * 404'd entirely. The files in this directory (favicon.ico, icon.png,
+   * apple-icon.png) are discovered automatically and emit correct tags with
+   * sizes and types, so the override is worse than nothing.
+   */
   openGraph: {
     title: 'Toolgraph',
     description:

@@ -99,6 +99,29 @@ body {
   background-clip: content-box;
 }
 
+/* Used by the homepage demo. Both are suppressed wholesale by the
+   prefers-reduced-motion rule below, which is why the demo also stops
+   advancing its own timeline in that case rather than relying on CSS alone. */
+@keyframes tg-demo-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes tg-demo-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

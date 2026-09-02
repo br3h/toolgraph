@@ -18,14 +18,6 @@ export const publicEnv = {
   sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN ?? '',
   posthogKey: process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN ?? '',
   posthogHost: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? '',
-  /**
-   * The landing page demo recording. Defaults to a file served from `public/`.
-   * Point it at a CDN or a signed URL instead by setting the variable; if
-   * nothing resolves, the landing page falls back to its static diagram rather
-   * than showing a broken player.
-   */
-  demoVideoUrl: process.env.NEXT_PUBLIC_DEMO_VIDEO_URL ?? '/demo.mp4',
-  demoVideoPoster: process.env.NEXT_PUBLIC_DEMO_VIDEO_POSTER ?? '/demo-poster.png',
 } as const;
 
 /** The app cannot function at all without these; everything else is optional. */

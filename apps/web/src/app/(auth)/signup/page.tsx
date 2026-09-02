@@ -1,12 +1,9 @@
-import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import { AuthForm } from '@/components/AuthForm';
 import { AuthLayout } from '@/components/AuthLayout';
 import { signInWithGitHub, signUp } from '@/app/auth/actions';
 import { getCurrentUser } from '@/lib/supabase/server';
-
-export const metadata: Metadata = { title: 'Create your account' };
 
 export default async function SignupPage({
   searchParams,

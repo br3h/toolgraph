@@ -1,35 +1,35 @@
 # Static assets
 
-Files here are served from the site root, so `toolgraph.png` is available at
-`/toolgraph.png`.
+Everything in this directory is served from the site root, so `toolgraph.png`
+is available at `/toolgraph.png`.
 
-## The demo video
+This is the only `public/` Next serves. There is a second one at the repository
+root, which exists solely so the logo renders in `README.md` on GitHub — Next
+never reads it. Putting an asset only there is why the logo 404'd in production
+once; anything the app links to belongs here.
 
-The landing page shows a screen recording under the hero. It looks for
-`/demo.mp4` with `/demo-poster.png` as its still frame, and **falls back to the
-static diagram if either is missing** — so the page never shows a broken player
-and there is no rush to add one.
+## Icons
 
-To add the recording, drop two files in this directory:
+The favicon uses Next's App Router file convention, from `apps/web/src/app/`
+rather than this directory:
 
-| File              | What it is                                               |
-| ----------------- | -------------------------------------------------------- |
-| `demo.mp4`        | H.264 MP4, 16:9, ideally under 30 seconds and under 8 MB |
-| `demo-poster.png` | A still frame shown before playback begins               |
+| File             | Serves as         | Notes                                 |
+| ---------------- | ----------------- | ------------------------------------- |
+| `favicon.ico`    | `/favicon.ico`    | Multi-size ICO: 16, 32, 48 and 64 px  |
+| `icon.png`       | `/icon.png`       | 32 px, for browsers that prefer PNG   |
+| `apple-icon.png` | `/apple-icon.png` | 180 px, for iOS home-screen bookmarks |
 
-It autoplays muted and loops, so it should read as an ambient loop rather than
-something with narration — no audio track is needed, and one will not be heard.
+Do **not** add an `icons` block to the metadata in `layout.tsx`. Doing so
+overrides this convention and emits a single bare `<link rel="icon">` with no
+`sizes` or `type`, which browsers pick badly for a 16 px tab — and it leaves
+`/favicon.ico` unserved, which is the first thing most clients request.
 
-What it should show, in order, is the thing the product is actually for:
+## There is no demo video
 
-1. Connecting an MCP server and its tools appearing on the canvas.
-2. Dragging a compatible field to a compatible field — the connection snaps.
-3. Dragging a **mismatched** field, and the inline message naming the field,
-   the expected type and the actual type. This is the moment worth recording.
-4. Opening the export panel and switching between TypeScript and Python.
+The homepage demo is drawn live in the browser by
+`src/components/DemoAnimation.tsx` — React and SVG, no media file. It is a few
+kilobytes instead of several megabytes, stays sharp at any size, follows the
+theme, and cannot leave the black rectangle a failed `<video>` does.
 
-To host it elsewhere instead of committing a binary, set
-`NEXT_PUBLIC_DEMO_VIDEO_URL` (and optionally `NEXT_PUBLIC_DEMO_VIDEO_POSTER`)
-to the CDN URL. If you do, add that origin to the CSP `media-src` in
-`apps/web/src/middleware.ts` — it is not currently allowlisted, so a
-cross-origin video would be blocked.
+If you want to change what it shows, edit the `OUTPUTS`, `INPUTS` and `TIMELINE`
+constants at the top of that component; the layout derives from them.

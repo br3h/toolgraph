@@ -1,4 +1,3 @@
-import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 
 import { GraphEditor } from '@/components/GraphEditor';
@@ -25,16 +24,6 @@ async function loadGraph(id: string) {
 
   if (error || !data) return null;
   return data;
-}
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}): Promise<Metadata> {
-  const { id } = await params;
-  const graph = await loadGraph(id);
-  return { title: graph ? String(graph.title) : 'Graph' };
 }
 
 export default async function GraphEditorPage({ params }: { params: Promise<{ id: string }> }) {
