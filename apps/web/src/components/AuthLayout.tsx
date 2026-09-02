@@ -9,7 +9,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
       <header className="flex items-center justify-between border-b border-border-subtle px-6 py-4">
         <Link href="/" className="flex items-center gap-2.5">
           <Image src="/toolgraph.png" alt="" width={24} height={24} className="rounded" priority />
-          <span className="text-sm font-semibold tracking-tight">toolgraph</span>
+          <span className="text-sm font-semibold tracking-tight">Toolgraph</span>
         </Link>
         <ThemeToggle />
       </header>

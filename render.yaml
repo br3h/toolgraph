@@ -45,9 +45,11 @@ services:
         # Hard off in production. The SSRF guard depends on this staying false,
         # and the engine refuses to boot if it is true while NODE_ENV=production.
         value: 'false'
-      - key: RENDER_GIT_COMMIT
-        # Render populates this; declared so /health can report the deployed SHA.
-        sync: false
+      # RENDER_GIT_COMMIT is NOT declared here on purpose. Render injects it into
+      # every service automatically, and declaring it with `sync: false` turns it
+      # into a variable the dashboard expects a human to fill in — which would
+      # either leave it blank or pin it to a stale SHA, making /health report the
+      # wrong commit. The engine reads it straight from the environment.
 
       # ---- MUST be set by hand in the Render dashboard ------------------------
       # Comma-separated browser origins allowed to call the engine. Never "*".

@@ -30,7 +30,7 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
         }}
       >
         <div style={{ maxWidth: 420, padding: 24, textAlign: 'center' }}>
-          <h1 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>toolgraph could not load</h1>
+          <h1 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Toolgraph could not load</h1>
           <p style={{ marginTop: 8, fontSize: 14, lineHeight: 1.6, color: '#6e6e6e' }}>
             Something failed before the page could render. The error has been reported.
           </p>

@@ -44,7 +44,7 @@ function wrap(title: string, bodyHtml: string, siteUrl: string): string {
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;border:1px solid #e9e9e9;border-radius:10px;padding:32px;">
             <tr>
               <td>
-                <p style="margin:0 0 24px;font-size:15px;font-weight:700;letter-spacing:-0.01em;">toolgraph</p>
+                <p style="margin:0 0 24px;font-size:15px;font-weight:700;letter-spacing:-0.01em;">Toolgraph</p>
                 <h1 style="margin:0 0 16px;font-size:20px;font-weight:600;line-height:1.3;">${title}</h1>
                 ${bodyHtml}
                 <p style="margin:32px 0 0;padding-top:24px;border-top:1px solid #e9e9e9;font-size:12px;color:#6e6e6e;">
@@ -91,7 +91,7 @@ async function send(to: string, subject: string, html: string, text: string): Pr
 
 export async function sendWelcomeEmail(to: string, siteUrl: string): Promise<SendResult> {
   const html = wrap(
-    'Welcome to toolgraph',
+    'Welcome to Toolgraph',
     `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;">
        Your account is ready. Connect an MCP server, and every tool it exposes becomes a node you
        can wire up — with each connection type-checked against the tools' real schemas before it
@@ -100,13 +100,13 @@ export async function sendWelcomeEmail(to: string, siteUrl: string): Promise<Sen
      ${button(`${siteUrl}/graphs`, 'Open your graphs')}
      <p style="margin:0;font-size:14px;line-height:1.6;color:#6e6e6e;">
        When a graph is right, export it as TypeScript or Python. The generated code has no
-       toolgraph dependency — it is yours to keep.
+       Toolgraph dependency — it is yours to keep.
      </p>`,
     siteUrl,
   );
 
   const text = [
-    'Welcome to toolgraph',
+    'Welcome to Toolgraph',
     '',
     'Your account is ready. Connect an MCP server, and every tool it exposes becomes a node you',
     "can wire up — with each connection type-checked against the tools' real schemas before it runs.",
@@ -114,10 +114,10 @@ export async function sendWelcomeEmail(to: string, siteUrl: string): Promise<Sen
     `Open your graphs: ${siteUrl}/graphs`,
     '',
     'When a graph is right, export it as TypeScript or Python. The generated code has no',
-    'toolgraph dependency — it is yours to keep.',
+    'Toolgraph dependency — it is yours to keep.',
   ].join('\n');
 
-  return send(to, 'Welcome to toolgraph', html, text);
+  return send(to, 'Welcome to Toolgraph', html, text);
 }
 
 export async function sendConfirmSignupEmail(
@@ -128,7 +128,7 @@ export async function sendConfirmSignupEmail(
   const html = wrap(
     'Confirm your email',
     `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;">
-       Confirm this address to finish setting up your toolgraph account.
+       Confirm this address to finish setting up your Toolgraph account.
      </p>
      ${button(confirmUrl, 'Confirm email')}
      <p style="margin:0;font-size:13px;line-height:1.6;color:#6e6e6e;">
@@ -141,13 +141,13 @@ export async function sendConfirmSignupEmail(
   const text = [
     'Confirm your email',
     '',
-    'Confirm this address to finish setting up your toolgraph account:',
+    'Confirm this address to finish setting up your Toolgraph account:',
     confirmUrl,
     '',
     'This link expires in 24 hours.',
   ].join('\n');
 
-  return send(to, 'Confirm your toolgraph email', html, text);
+  return send(to, 'Confirm your Toolgraph email', html, text);
 }
 
 export async function sendMagicLinkEmail(
@@ -158,7 +158,7 @@ export async function sendMagicLinkEmail(
   const html = wrap(
     'Your sign-in link',
     `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;">
-       Use this link to sign in to toolgraph. It works once, and expires in an hour.
+       Use this link to sign in to Toolgraph. It works once, and expires in an hour.
      </p>
      ${button(linkUrl, 'Sign in')}
      <p style="margin:0;font-size:13px;line-height:1.6;color:#6e6e6e;">
@@ -169,12 +169,12 @@ export async function sendMagicLinkEmail(
   );
 
   const text = [
-    'Your toolgraph sign-in link',
+    'Your Toolgraph sign-in link',
     '',
     linkUrl,
     '',
     'It works once, and expires in an hour.',
   ].join('\n');
 
-  return send(to, 'Your toolgraph sign-in link', html, text);
+  return send(to, 'Your Toolgraph sign-in link', html, text);
 }

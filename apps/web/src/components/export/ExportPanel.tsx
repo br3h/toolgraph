@@ -267,7 +267,7 @@ export function ExportPanel({ editor, open, onClose }: ExportPanelProps) {
       open={open}
       onClose={onClose}
       title="Export this graph"
-      description="Standalone code with no toolgraph dependency. It is yours to keep."
+      description="Standalone code with no Toolgraph dependency. It is yours to keep."
       size="lg"
       footer={
         <div className="flex flex-wrap items-center justify-between gap-3">

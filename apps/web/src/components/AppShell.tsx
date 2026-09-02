@@ -23,7 +23,7 @@ export function AppShell({ email, children, toolbar, fullBleed = false }: AppShe
       <header className="flex h-14 shrink-0 items-center gap-4 border-b border-border-subtle px-4">
         <Link href="/graphs" className="flex shrink-0 items-center gap-2.5">
           <Image src="/toolgraph.png" alt="" width={22} height={22} className="rounded" priority />
-          <span className="text-sm font-semibold tracking-tight">toolgraph</span>
+          <span className="text-sm font-semibold tracking-tight">Toolgraph</span>
         </Link>
 
         <div className="min-w-0 flex-1">{toolbar}</div>

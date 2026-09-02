@@ -159,7 +159,7 @@ export function ServerConnectDialog({ editor, open, onClose }: ServerConnectDial
       open={open}
       onClose={onClose}
       title="Connect an MCP server"
-      description="toolgraph reads the server's tools and their real JSON Schemas."
+      description="Toolgraph reads the server's tools and their real JSON Schemas."
       size="md"
       footer={
         <div className="flex justify-end gap-2">

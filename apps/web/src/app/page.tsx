@@ -5,9 +5,11 @@ import { redirect } from 'next/navigation';
 import { ThemeToggle } from '@toolgraph/ui';
 
 import { getCurrentUser } from '@/lib/supabase/server';
+import { publicEnv } from '@/lib/public-env';
+import { DemoVideo } from '@/components/DemoVideo';
 
 export const metadata: Metadata = {
-  title: 'toolgraph — type-checked MCP tool graphs',
+  title: 'Toolgraph — type-checked MCP tool graphs',
   description:
     "Wire MCP tools together on a canvas. Every connection is checked against the tools' real JSON Schemas before it runs, and exports to TypeScript or Python you own outright.",
 };
@@ -29,7 +31,7 @@ function MismatchDiagram() {
     <div
       className="relative rounded-[var(--tg-radius-lg)] border border-border bg-bg-raised p-6 sm:p-8"
       role="img"
-      aria-label="Two tools on a canvas. createUser outputs a numeric id, sendEmail expects a string userId, and toolgraph rejects the connection with the message: field userId expects string, but createUser provides number."
+      aria-label="Two tools on a canvas. createUser outputs a numeric id, sendEmail expects a string userId, and Toolgraph rejects the connection with the message: field userId expects string, but createUser provides number."
     >
       <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:gap-0">
         <div className="w-full rounded-[var(--tg-radius-md)] border border-border bg-bg p-3 sm:w-[46%]">
@@ -129,10 +131,16 @@ export default async function LandingPage() {
               className="rounded"
               priority
             />
-            <span className="text-sm font-semibold tracking-tight">toolgraph</span>
+            <span className="text-sm font-semibold tracking-tight">Toolgraph</span>
           </Link>
 
           <nav className="flex items-center gap-1.5">
+            <Link
+              href="/pricing"
+              className="rounded-[var(--tg-radius-sm)] px-2.5 py-1.5 text-xs font-medium text-fg-muted transition-colors hover:text-fg"
+            >
+              Pricing
+            </Link>
             <a
               href={REPO}
               target="_blank"
@@ -169,7 +177,7 @@ export default async function LandingPage() {
           <p className="mt-5 max-w-2xl text-base leading-relaxed text-fg-muted">
             One tool returns <code className="font-mono text-fg">{'{ user: { id: number } }'}</code>
             . The next one wants <code className="font-mono text-fg">{'{ userId: string }'}</code>.
-            Nothing tells you until it breaks in production. toolgraph checks every connection
+            Nothing tells you until it breaks in production. Toolgraph checks every connection
             against the tools&apos; real JSON Schemas the moment you draw it.
           </p>
 
@@ -190,8 +198,19 @@ export default async function LandingPage() {
             </a>
           </div>
 
+          {/*
+            The recording carries the pitch far better than the diagram can — it
+            shows the connection being drawn and refused in real time. The
+            diagram stays as the fallback, so a missing or failing video is
+            invisible to visitors rather than a black rectangle.
+          */}
           <div className="mt-14">
-            <MismatchDiagram />
+            <DemoVideo
+              src={publicEnv.demoVideoUrl}
+              poster={publicEnv.demoVideoPoster}
+              caption="Connecting two MCP tools. The mismatched field is refused as the connection is drawn."
+              fallback={<MismatchDiagram />}
+            />
           </div>
         </section>
 
@@ -210,7 +229,7 @@ export default async function LandingPage() {
 
             <Feature title="Export code you own">
               Generate standalone TypeScript with real interfaces and zod validators, or Python with
-              Pydantic models. Zero toolgraph dependency — delete your account and the code keeps
+              Pydantic models. Zero Toolgraph dependency — delete your account and the code keeps
               working.
             </Feature>
 
@@ -229,7 +248,7 @@ export default async function LandingPage() {
                 {
                   step: 'One',
                   title: 'Connect a server',
-                  body: 'Point toolgraph at an MCP server over streamable HTTP or SSE. It reads the tools and their schemas directly from the protocol.',
+                  body: 'Point Toolgraph at an MCP server over streamable HTTP or SSE. It reads the tools and their schemas directly from the protocol.',
                 },
                 {
                   step: 'Two',
@@ -258,9 +277,12 @@ export default async function LandingPage() {
       <footer className="border-t border-border-subtle">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-6 py-8 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-fg-subtle">
-            toolgraph — type-checked MCP tool graphs. MIT licensed.
+            Toolgraph — type-checked MCP tool graphs. MIT licensed.
           </p>
           <nav className="flex flex-wrap items-center gap-4 text-xs">
+            <Link href="/pricing" className="text-fg-muted transition-colors hover:text-fg">
+              Pricing
+            </Link>
             <a
               href={REPO}
               target="_blank"

@@ -21,15 +21,15 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
   title: {
-    default: 'toolgraph',
-    template: '%s · toolgraph',
+    default: 'Toolgraph',
+    template: '%s · Toolgraph',
   },
   description:
     'Wire MCP tools together on a canvas, type-checked against their real JSON Schemas, then export the result as code you own.',
-  applicationName: 'toolgraph',
+  applicationName: 'Toolgraph',
   icons: { icon: '/toolgraph.png', apple: '/toolgraph.png' },
   openGraph: {
-    title: 'toolgraph',
+    title: 'Toolgraph',
     description:
       'Wire MCP tools together on a canvas, type-checked against their real JSON Schemas.',
     type: 'website',

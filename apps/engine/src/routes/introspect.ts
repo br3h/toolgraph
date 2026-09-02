@@ -7,7 +7,7 @@
  */
 
 import type { FastifyInstance } from 'fastify';
-import { introspectServer } from '@toolgraph/mcp-client';
+import { McpClientError, SsrfBlockedError, introspectServer } from '@toolgraph/mcp-client';
 
 import type { EngineConfig } from '../config';
 import { formatZodError, introspectBodySchema } from '../schemas';
@@ -17,6 +17,17 @@ import { requireUser } from '../lib/auth-hook';
 export interface IntrospectRouteDeps {
   config: EngineConfig;
   limiter: RateLimiter;
+}
+
+/** Collapse a sprawling upstream error into one readable line. */
+function summarise(message: string): string {
+  const firstLine = message.split('\n')[0] ?? message;
+  // Strip any HTML a failing server folded into its response body.
+  const withoutMarkup = firstLine
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return withoutMarkup.length > 200 ? `${withoutMarkup.slice(0, 200)}…` : withoutMarkup;
 }
 
 export function registerIntrospectRoute(
@@ -57,17 +68,37 @@ export function registerIntrospectRoute(
 
       return reply.send({ tools, serverId: connection.id, toolCount: tools.length });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Could not reach the server.';
-
-      // A refusal by the SSRF guard is the user's mistake to correct, not an
-      // engine fault, so it is a 400 with the specific reason rather than a 502.
+      /*
+       * Classify by error TYPE, not by matching words in the message.
+       *
+       * This previously tested the message for "blocked" / "not allowed", which
+       * missed the guard's actual wording ("...is a literal address in
+       * 169.254.0.0/16 (link-local, cloud metadata)"). The guard still refused
+       * the connection, but the caller was told the engine had failed — a 502 —
+       * when in fact their URL was rejected on purpose. Both packages already
+       * export typed errors, so the classification uses those instead and
+       * cannot drift when a message is reworded.
+       */
       const isPolicyRefusal =
-        message.includes('blocked') ||
-        message.includes('not allowed') ||
-        message.includes('local-development');
+        error instanceof SsrfBlockedError ||
+        (error instanceof McpClientError &&
+          (error.code === 'stdio_not_allowed' ||
+            error.code === 'missing_url' ||
+            error.code === 'missing_command'));
+
+      const rawMessage = error instanceof Error ? error.message : 'Could not reach the server.';
+
+      // A failing server can answer with an entire HTML page, and the SDK folds
+      // that body into its error. Echoing it back would hand the client a wall
+      // of someone else's markup, so it is truncated to something readable.
+      const message = isPolicyRefusal ? rawMessage : summarise(rawMessage);
 
       request.log.warn(
-        { transport: connection.transport, refused: isPolicyRefusal },
+        {
+          transport: connection.transport,
+          refused: isPolicyRefusal,
+          code: error instanceof SsrfBlockedError ? error.code : undefined,
+        },
         'introspection failed',
       );
 
