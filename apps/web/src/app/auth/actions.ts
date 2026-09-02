@@ -108,8 +108,24 @@ export async function signUp(
   });
 
   if (error) {
-    // Supabase's own messages are reasonable and do not leak whether an address
-    // is registered, so they are passed through rather than rewritten.
+    /*
+     * One message is not safe to pass through. When Supabase's SMTP is
+     * misconfigured it answers "Error sending confirmation email" with a 500,
+     * which tells the person nothing they can act on and reads as though their
+     * details were rejected. The account may even exist by then. Say what
+     * actually happened instead, and surface it where it can be found.
+     */
+    if (/sending.*email/i.test(error.message) || error.status === 500) {
+      console.error(`signup: confirmation email could not be sent — ${error.message}`);
+      return {
+        error:
+          'Your account could not be created because the confirmation email could not be sent. ' +
+          'This is a problem on our side, not with your details. Please try again shortly.',
+      };
+    }
+
+    // Everything else is Supabase's own wording, which is reasonable and does
+    // not leak whether an address is already registered.
     return { error: error.message };
   }
 

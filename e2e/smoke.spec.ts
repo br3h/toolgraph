@@ -66,8 +66,38 @@ test.describe('signup to canvas', () => {
     await page.getByTestId('signup-password').fill(PASSWORD);
     await page.getByTestId('signup-submit').click();
 
-    // Lands somewhere signed-in. The graphs list is the post-signup destination.
-    await page.waitForURL(/\/graphs/, { timeout: 45_000 });
+    /*
+     * Two legitimate outcomes, depending on the project's configuration.
+     *
+     * CI runs against a local Supabase stack, which auto-confirms, so signup
+     * yields a session and lands on the graphs list — and the rest of this test
+     * exercises the canvas. A hosted project with email confirmation on instead
+     * shows the "check your inbox" notice and issues no session. Asserting only
+     * the first made this test fail against production for a reason that was
+     * not a defect.
+     */
+    const landed = page.waitForURL(/\/graphs/, { timeout: 45_000 }).then(() => 'session' as const);
+    const notice = page
+      .getByTestId('auth-notice')
+      .waitFor({ state: 'visible', timeout: 45_000 })
+      .then(() => 'confirm' as const);
+
+    const outcome = await Promise.race([landed, notice]);
+
+    if (outcome === 'confirm') {
+      // The signup itself succeeded, which is what this step proves. The
+      // authenticated flow beyond it needs a confirmed account, and CI covers
+      // that against the local stack.
+      await expect(page.getByTestId('auth-notice')).toContainText(/confirm/i);
+      test.info().annotations.push({
+        type: 'note',
+        description:
+          'Email confirmation is enabled on this project, so signup issues no session. ' +
+          'The canvas portion of this test runs in CI against the local stack.',
+      });
+      return;
+    }
+
     await expect(page.getByTestId('graph-list')).toBeVisible();
 
     // --- create a graph --------------------------------------------------
