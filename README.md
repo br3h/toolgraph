@@ -306,6 +306,10 @@ requires one click in the dashboard — Render has no CLI-only path for it:
 
 ### Steps that need you
 
+> Click-by-click instructions for everything that needs a dashboard login,
+> including the credential encryption key and the Supabase SMTP settings, are in
+> [MANUAL_ACTIONS.md](MANUAL_ACTIONS.md).
+
 The engine's custom domain, its CORS origins, the migrations, GitHub OAuth and
 DNS are all done and verified. **One thing is still broken in production.**
 
