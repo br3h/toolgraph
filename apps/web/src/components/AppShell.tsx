@@ -29,6 +29,12 @@ export function AppShell({ email, children, toolbar, fullBleed = false }: AppShe
         <div className="min-w-0 flex-1">{toolbar}</div>
 
         <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href="/billing"
+            className="rounded-[var(--tg-radius-sm)] px-2.5 py-1.5 text-xs font-medium text-fg-muted transition-colors hover:text-fg"
+          >
+            Billing
+          </Link>
           <ThemeToggle />
           <div className="flex items-center gap-2" data-testid="user-menu">
             {email ? (
