@@ -29,7 +29,7 @@ import {
 } from '@toolgraph/ui';
 
 import { captureEvent, type AnalyticsEvent } from '@/lib/analytics';
-import type { CryptoCurrency, PaymentAddress } from '@/lib/billing/plan';
+import type { BillingInterval, CryptoCurrency, PaymentAddress, PlanId } from '@/lib/billing/plan';
 import type { SubscriptionState } from '@/lib/billing/subscription';
 import type { BillingSubmitRequest, PaymentQuote } from '@/components/billing/types';
 
@@ -43,8 +43,19 @@ export interface BillingPanelProps {
   addresses: readonly PaymentAddress[];
   /** Server-side quotes, one per currency; null where the feed was unavailable. */
   quotes: Partial<Record<CryptoCurrency, PaymentQuote | null>>;
+  /** USD total for the selection below. Computed on the server by `priceUsd`. */
   priceUsd: number;
   intervalDays: number;
+  /**
+   * What the surrounding page has the user buying. The panel does not choose —
+   * it reports. Selection happens in `PlanChooser`, which re-renders the page
+   * with new quotes, so the amount shown next to the address is always a
+   * server-computed figure for the plan actually being submitted.
+   */
+  plan: Exclude<PlanId, 'free'>;
+  billingInterval: BillingInterval;
+  seats: number;
+  workspaceId: string | null;
 }
 
 /**
@@ -83,6 +94,29 @@ function readNumber(record: Record<string, unknown> | null, key: string): number
   const value = record?.[key];
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
+
+/** Anything outside the union reads as 'free', which withholds rather than grants. */
+function readPlan(record: Record<string, unknown> | null): PlanId {
+  const value = record?.plan;
+  return value === 'pro' || value === 'team' ? value : 'free';
+}
+
+/**
+ * The shape a client-side status update is merged onto.
+ *
+ * Only ever used as a base for a spread when there is no previous state — the
+ * server's answer replaces all of it on the next `refreshStatus`. It says
+ * 'none' and 'free' so that a missing field can never read as an entitlement.
+ */
+const EMPTY_STATE: SubscriptionState = {
+  status: 'none',
+  currentPeriodEnd: null,
+  daysRemaining: null,
+  plan: 'free',
+  billingInterval: 'monthly',
+  seats: 1,
+  workspaceId: null,
+};
 
 /* -------------------------------------------------------------------------- */
 /* Formatting                                                                  */
@@ -248,6 +282,10 @@ export function BillingPanel({
   quotes,
   priceUsd,
   intervalDays,
+  plan,
+  billingInterval,
+  seats,
+  workspaceId,
 }: BillingPanelProps) {
   const first = addresses[0];
   const [currency, setCurrency] = useState<CryptoCurrency>(first ? first.currency : 'ETH');
@@ -295,7 +333,16 @@ export function BillingPanel({
     let outcome: SubmitOutcome = 'error';
 
     try {
-      const body: BillingSubmitRequest = { currency, txHash: hash };
+      const body: BillingSubmitRequest = {
+        currency,
+        txHash: hash,
+        plan,
+        billingInterval,
+        seats,
+        // Only a Team purchase may name a workspace; the server rejects the
+        // combination the other way round.
+        workspaceId: plan === 'team' ? workspaceId : null,
+      };
       const response = await fetch('/api/billing/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -315,7 +362,20 @@ export function BillingPanel({
           setResult({ kind: 'verified', daysRemaining, currentPeriodEnd });
           // The server said verified, which is the only thing that may switch
           // this display to active.
-          setState({ status: 'active', currentPeriodEnd, daysRemaining });
+          // `setState` carries the purchase through so the card below reports
+          // the plan that was just bought rather than the one loaded with the
+          // page. The server is still the authority: `refreshStatus` replaces
+          // all of this with what the database says.
+          setState((previous) => ({
+            ...(previous ?? EMPTY_STATE),
+            status: 'active',
+            currentPeriodEnd,
+            daysRemaining,
+            plan,
+            billingInterval,
+            seats,
+            workspaceId,
+          }));
           setTxHash('');
         } else if (status === 'pending') {
           outcome = 'pending';
@@ -325,7 +385,15 @@ export function BillingPanel({
               readString(record, 'message') ??
               'Your transaction is recorded and waiting to be reviewed.',
           });
-          setState({ status: 'pending', currentPeriodEnd: null, daysRemaining: null });
+          // Pending is a claim, not an entitlement, so the plan is deliberately
+          // NOT set here — reporting `plan: 'team'` on an unverified claim is
+          // exactly the kind of thing a feature gate would later read as paid.
+          setState((previous) => ({
+            ...(previous ?? EMPTY_STATE),
+            status: 'pending',
+            currentPeriodEnd: null,
+            daysRemaining: null,
+          }));
         } else if (status === 'rejected') {
           outcome = 'rejected';
           setResult({
@@ -380,9 +448,11 @@ export function BillingPanel({
       setSubmitting(false);
       // Two enumerated values. Nothing here can carry a hash, an amount or an
       // address, which is the whole rule for this payload.
-      captureEvent(SUBSCRIPTION_SUBMITTED, { currency, outcome });
+      // Four enumerated values and a seat count. Nothing here can carry a
+      // hash, an amount, an address or a workspace id, which is the rule.
+      captureEvent(SUBSCRIPTION_SUBMITTED, { currency, outcome, plan, billingInterval, seats });
     }
-  }, [currency, submitting, txHash]);
+  }, [billingInterval, currency, plan, seats, submitting, txHash, workspaceId]);
 
   const refreshStatus = useCallback(async () => {
     setRefreshing(true);
@@ -404,6 +474,10 @@ export function BillingPanel({
           status,
           currentPeriodEnd: readString(record, 'currentPeriodEnd'),
           daysRemaining: readNumber(record, 'daysRemaining'),
+          plan: readPlan(record),
+          billingInterval: record?.billingInterval === 'annual' ? 'annual' : 'monthly',
+          seats: readNumber(record, 'seats') ?? 1,
+          workspaceId: readString(record, 'workspaceId'),
         });
       }
     } catch {

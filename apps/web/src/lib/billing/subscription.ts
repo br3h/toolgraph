@@ -16,6 +16,7 @@ import 'server-only';
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
+import type { BillingInterval, PlanId } from './plan';
 
 export interface SubscriptionState {
   status: 'none' | 'pending' | 'active' | 'expired';
@@ -23,21 +24,48 @@ export interface SubscriptionState {
   currentPeriodEnd: string | null;
   /** Whole days left, rounded up. Null unless the subscription is active. */
   daysRemaining: number | null;
+  /** What was bought. 'free' whenever the status is not 'active'. */
+  plan: PlanId;
+  billingInterval: BillingInterval;
+  /** Seats the payment covers. Always 1 outside the Team plan. */
+  seats: number;
+  /** The workspace a Team subscription pays for, or null. */
+  workspaceId: string | null;
 }
 
 const DAY_MS = 86_400_000;
 
 const STATUSES: readonly SubscriptionState['status'][] = ['none', 'pending', 'active', 'expired'];
 
-const NONE: SubscriptionState = { status: 'none', currentPeriodEnd: null, daysRemaining: null };
+const NONE: SubscriptionState = {
+  status: 'none',
+  currentPeriodEnd: null,
+  daysRemaining: null,
+  plan: 'free',
+  billingInterval: 'monthly',
+  seats: 1,
+  workspaceId: null,
+};
 
 interface SubscriptionRow {
   status: string | null;
   current_period_end: string | null;
+  plan: string | null;
+  billing_interval: string | null;
+  seats: number | null;
+  workspace_id: string | null;
 }
 
 function isStatus(value: unknown): value is SubscriptionState['status'] {
   return typeof value === 'string' && STATUSES.includes(value as SubscriptionState['status']);
+}
+
+function toPlan(value: unknown): PlanId {
+  return value === 'pro' || value === 'team' ? value : 'free';
+}
+
+function toInterval(value: unknown): BillingInterval {
+  return value === 'annual' ? 'annual' : 'monthly';
 }
 
 /**
@@ -59,7 +87,7 @@ export async function getSubscriptionState(userId: string): Promise<Subscription
     const admin = createAdminClient();
     const { data, error } = await admin
       .from('subscriptions')
-      .select('status, current_period_end')
+      .select('status, current_period_end, plan, billing_interval, seats, workspace_id')
       .eq('owner', userId)
       .maybeSingle();
 
@@ -77,34 +105,67 @@ export async function getSubscriptionState(userId: string): Promise<Subscription
   const endsAt = currentPeriodEnd ? Date.parse(currentPeriodEnd) : Number.NaN;
   const msRemaining = Number.isNaN(endsAt) ? null : endsAt - Date.now();
 
-  if (stored === 'active' && (msRemaining === null || msRemaining <= 0)) {
-    return { status: 'expired', currentPeriodEnd, daysRemaining: 0 };
+  // What was bought is only meaningful while it is being enjoyed. Reporting
+  // plan 'team' on a lapsed subscription would let a caller gate a feature on
+  // the plan name alone and get it wrong; 'free' is the honest answer once the
+  // period has run out.
+  const active = stored === 'active' && msRemaining !== null && msRemaining > 0;
+  const bought = {
+    plan: active ? toPlan(row.plan) : ('free' as PlanId),
+    billingInterval: toInterval(row.billing_interval),
+    seats: typeof row.seats === 'number' && row.seats > 0 ? row.seats : 1,
+    workspaceId: row.workspace_id,
+  };
+
+  if (stored === 'active' && !active) {
+    return { status: 'expired', currentPeriodEnd, daysRemaining: 0, ...bought };
   }
 
   return {
     status: stored,
     currentPeriodEnd,
-    daysRemaining:
-      stored === 'active' && msRemaining !== null ? Math.ceil(msRemaining / DAY_MS) : null,
+    daysRemaining: active && msRemaining !== null ? Math.ceil(msRemaining / DAY_MS) : null,
+    ...bought,
   };
 }
 
+/** What a verified payment bought. Passed straight to `activateSubscription`. */
+export interface Purchase {
+  plan: Exclude<PlanId, 'free'>;
+  billingInterval: BillingInterval;
+  seats: number;
+  /** Required for `team`, and must be null otherwise — the DB enforces both. */
+  workspaceId: string | null;
+  days: number;
+}
+
 /**
- * Grants `days` of paid access, and marks the subscription active.
+ * Grants a paid period, and marks the subscription active.
  *
  * Time is added to the later of now and the existing period end, so paying
  * before the current month runs out extends it rather than throwing the
  * remainder away. Someone who renews on day 25 keeps their five days.
+ *
+ * Switching plan or interval mid-period keeps the remaining time and applies
+ * the new plan to it. That favours the customer over us, which is the correct
+ * direction to be wrong in when the alternative is voiding time somebody has
+ * already paid for.
  *
  * Throws if the write fails. Deliberately: the caller has just verified a
  * payment on chain, and a silent failure here would take someone's money and
  * leave them without the subscription they bought. It has to be loud enough to
  * reach the logs and the user.
  */
-export async function activateSubscription(userId: string, days: number): Promise<void> {
+export async function activateSubscription(userId: string, purchase: Purchase): Promise<void> {
   if (!userId) throw new Error('activateSubscription requires a user id.');
+  const { days } = purchase;
   if (!Number.isFinite(days) || days <= 0) {
     throw new Error('activateSubscription requires a positive number of days.');
+  }
+  // Mirrors subscriptions_team_workspace_check. Caught here so the failure
+  // names the programming error rather than surfacing as a constraint string.
+  if ((purchase.plan === 'team') !== (purchase.workspaceId !== null)) {
+    throw new Error('A team subscription must name a workspace, and only a team subscription may.');
   }
 
   const admin = createAdminClient();
@@ -131,6 +192,10 @@ export async function activateSubscription(userId: string, days: number): Promis
       owner: userId,
       status: 'active',
       current_period_end: new Date(base + days * DAY_MS).toISOString(),
+      plan: purchase.plan,
+      billing_interval: purchase.billingInterval,
+      seats: purchase.plan === 'team' ? purchase.seats : 1,
+      workspace_id: purchase.workspaceId,
     },
     { onConflict: 'owner' },
   );

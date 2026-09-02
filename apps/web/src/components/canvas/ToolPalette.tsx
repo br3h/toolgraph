@@ -13,15 +13,17 @@ import type { McpToolDescriptor } from '@toolgraph/schema-core';
 import { Button, EmptyState, Input } from '@toolgraph/ui';
 
 import type { GraphEditorState } from '@/hooks/useGraphEditor';
-import { ServerConnectDialog } from './ServerConnectDialog';
+import { ServerConnectDialog, type ImportableConnection } from './ServerConnectDialog';
 
 export interface ToolPaletteProps {
   editor: GraphEditorState;
+  /** Passed straight through to the connect dialog. */
+  savedConnections?: ImportableConnection[];
 }
 
 const NODE_STAGGER = 42;
 
-export function ToolPalette({ editor }: ToolPaletteProps) {
+export function ToolPalette({ editor, savedConnections = [] }: ToolPaletteProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [filter, setFilter] = useState('');
 
@@ -142,7 +144,12 @@ export function ToolPalette({ editor }: ToolPaletteProps) {
         </div>
       )}
 
-      <ServerConnectDialog editor={editor} open={dialogOpen} onClose={() => setDialogOpen(false)} />
+      <ServerConnectDialog
+        editor={editor}
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        savedConnections={savedConnections}
+      />
     </div>
   );
 }

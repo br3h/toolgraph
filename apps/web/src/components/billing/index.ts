@@ -9,3 +9,4 @@ export type {
   BillingVerifiedResponse,
   PaymentQuote,
 } from './types';
+export { PlanChooser, type PlanChooserProps } from './PlanChooser';

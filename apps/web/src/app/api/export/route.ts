@@ -12,6 +12,7 @@ import { generate } from '@toolgraph/codegen';
 import type { McpToolDescriptor, ToolGraphDocument } from '@toolgraph/schema-core';
 
 import { getCurrentUser } from '@/lib/supabase/server';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { publicEnv } from '@/lib/public-env';
 
 export const runtime = 'nodejs';
@@ -124,6 +125,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: 'unauthenticated', message: 'Sign in to export a graph.' },
       { status: 401, headers: NO_STORE },
+    );
+  }
+
+  /*
+   * This endpoint previously had no rate limit at all, which made it the most
+   * expensive thing an authenticated user could ask this app to do without
+   * bound: `generate()` runs `json-schema-to-typescript` synchronously over
+   * every schema in the graph, on a shared serverless CPU, for a body of up to
+   * 4 MB. A loop over it is a denial of service against every other request on
+   * the instance.
+   *
+   * Placed before the body is read, so a refused caller does not get to spend
+   * memory on the upload either.
+   */
+  const verdict = await checkRateLimit('export', `user:${user.id}`);
+  if (!verdict.allowed) {
+    return rateLimitResponse(
+      verdict,
+      'You have exported a lot of graphs in the last minute. Try again shortly — nothing has been lost.',
     );
   }
 

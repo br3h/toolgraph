@@ -136,10 +136,36 @@ test.describe('branding and the homepage demo', () => {
     expect(await page.title()).toBe('Toolgraph');
   });
 
-  test('the title carries no route suffix on other pages either', async ({ page }) => {
-    for (const path of ['/login', '/signup', '/pricing']) {
+  test('the auth pages carry no route suffix either', async ({ page }) => {
+    // The root metadata sets `title` as a plain string with no `template`, so a
+    // route that declares nothing inherits the bare wordmark. The auth pages
+    // deliberately declare nothing: they are not content anybody searches for,
+    // and "Sign in · Toolgraph" in a tab adds nothing.
+    for (const path of ['/login', '/signup']) {
       await page.goto(path);
       expect(await page.title(), `${path} should not append a suffix`).toBe('Toolgraph');
+    }
+  });
+
+  test('the public content pages carry their own clean title', async ({ page }) => {
+    /*
+     * The homepage is the one page whose tab must read exactly the wordmark,
+     * and the assertion above covers it. Everywhere else a searcher can land,
+     * a bare "Toolgraph" is a worse result than a titled one — a search listing
+     * and a tab strip both need to say which page this is.
+     *
+     * The `| Toolgraph` half is written per route rather than by a metadata
+     * template, because a template would also append itself to the homepage.
+     */
+    for (const [path, title] of [
+      ['/pricing', 'Pricing | Toolgraph'],
+      ['/docs', 'Docs | Toolgraph'],
+      ['/security', 'Security | Toolgraph'],
+      ['/privacy', 'Privacy | Toolgraph'],
+      ['/terms', 'Terms | Toolgraph'],
+    ] as const) {
+      await page.goto(path);
+      expect(await page.title(), `${path} should be titled`).toBe(title);
     }
   });
 

@@ -31,6 +31,22 @@ export interface SendResult {
 }
 
 /**
+ * Escapes the five characters that matter in HTML text and attribute contexts.
+ *
+ * Every other string interpolated into the templates below is either a constant
+ * or a URL this application built. A workspace name is not: it is chosen by one
+ * user and rendered in another user's mail client.
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
  * The monochrome constraint applies to email too. Inline styles only, since
  * mail clients strip stylesheets, and no hue anywhere.
  */
@@ -177,4 +193,53 @@ export async function sendMagicLinkEmail(
   ].join('\n');
 
   return send(to, 'Your Toolgraph sign-in link', html, text);
+}
+
+/**
+ * Tells someone they have been invited to a workspace.
+ *
+ * Note what the link is NOT: a token. Acceptance requires being signed in as
+ * the invited address, checked against auth.users by
+ * `public.accept_workspace_invitation()`, so this URL is a signpost rather than
+ * a credential — forwarding the mail does not transfer the invitation. That is
+ * why it points at the settings page rather than at a one-click accept route.
+ *
+ * The workspace name comes from the database and is interpolated into HTML, so
+ * it is escaped. A workspace called `<img onerror=...>` is somebody else's
+ * choice of name arriving in a stranger's inbox otherwise.
+ */
+export async function sendWorkspaceInviteEmail(
+  to: string,
+  workspaceName: string,
+  settingsUrl: string,
+): Promise<SendResult> {
+  const safeName = escapeHtml(workspaceName);
+
+  const html = wrap(
+    'You have been invited to a workspace',
+    `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;">
+       You have been invited to join <strong>${safeName}</strong> on Toolgraph — a shared
+       workspace where graphs and connections are visible to everyone in it.
+     </p>
+     ${button(settingsUrl, 'Open your workspaces')}
+     <p style="margin:0;font-size:14px;line-height:1.6;color:#6e6e6e;">
+       Sign in with this address to accept. The invitation is tied to it, so forwarding this
+       message does not pass it on. It expires in 14 days.
+     </p>`,
+    settingsUrl,
+  );
+
+  const text = [
+    'You have been invited to a workspace',
+    '',
+    `You have been invited to join ${workspaceName} on Toolgraph — a shared workspace where`,
+    'graphs and connections are visible to everyone in it.',
+    '',
+    `Open your workspaces: ${settingsUrl}`,
+    '',
+    'Sign in with this address to accept. The invitation is tied to it, so forwarding this',
+    'message does not pass it on. It expires in 14 days.',
+  ].join('\n');
+
+  return send(to, `You have been invited to ${workspaceName} on Toolgraph`, html, text);
 }

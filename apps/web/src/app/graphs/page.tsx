@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { EmptyState } from '@toolgraph/ui';
 
@@ -8,6 +9,11 @@ import { createClient, getCurrentUser } from '@/lib/supabase/server';
 import { parseDocument } from '@/lib/graph-document';
 
 export const dynamic = 'force-dynamic';
+
+// Behind a session, and a list of somebody's private work. The middleware
+// already refuses a signed-out request, but robots.txt only asks a crawler not
+// to fetch — this is what stops the URL being listed if something links to it.
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function GraphsPage() {
   const user = await getCurrentUser();
@@ -30,7 +36,7 @@ export default async function GraphsPage() {
   }));
 
   return (
-    <AppShell email={user.email}>
+    <AppShell email={user.email} active="graphs">
       <div className="mx-auto w-full max-w-5xl px-6 py-10">
         <div className="flex items-end justify-between gap-4">
           <div>

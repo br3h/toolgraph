@@ -75,7 +75,16 @@ function parseFrame(frame: string): ExecutionEvent | null {
   }
 }
 
-export function useGraphRun(editor: GraphEditorState, graphId: string): UseGraphRun {
+export function useGraphRun(
+  editor: GraphEditorState,
+  graphId: string,
+  /**
+   * Saved connections used by this graph that have a stored credential. When
+   * any of them is on the canvas the run is proxied through `/api/run` so the
+   * credential can be resolved server-side. Empty means the direct path.
+   */
+  credentialConnectionIds: readonly string[] = [],
+): UseGraphRun {
   const [phase, setPhase] = useState<RunPhase>('idle');
   const [steps, setSteps] = useState<ExecutionStepResult[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -148,6 +157,22 @@ export function useGraphRun(editor: GraphEditorState, graphId: string): UseGraph
 
   const start = useCallback(
     (secrets?: Record<string, McpConnectionSecrets>) => {
+      /*
+       * Two routes to the engine, and which one is taken depends on whether
+       * this graph uses a saved connection that has a stored credential.
+       *
+       *   direct   — no stored credential to resolve. Browser to engine, with
+       *              no serverless time limit, so a cold start plus a long run
+       *              is merely slow.
+       *   proxied  — a credential has to be decrypted server-side and must
+       *              never reach this component, so the whole run goes through
+       *              /api/run, which pipes the SSE stream back unchanged. That
+       *              path is bounded by the function's execution limit.
+       *
+       * `credentialConnectionIds` is supplied by the editor from the saved
+       * connections it was rendered with. An empty list means the direct path,
+       * which is the common case and the better one.
+       */
       if (phase === 'running' || phase === 'waking') return;
 
       const controller = new AbortController();
@@ -172,20 +197,37 @@ export function useGraphRun(editor: GraphEditorState, graphId: string): UseGraph
             return;
           }
 
-          const response = await fetch(`${publicEnv.engineUrl}/run`, {
-            method: 'POST',
-            signal: controller.signal,
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-              Accept: 'text/event-stream',
-            },
-            body: JSON.stringify({
-              graphId,
-              document: editor.document,
-              ...(secrets ? { secrets } : {}),
-            }),
-          });
+          // Only servers actually on this canvas count: a saved connection the
+          // user has not used here must not have its credential decrypted.
+          const onCanvas = new Set(editor.document.servers.map((server) => server.id));
+          const needed = credentialConnectionIds.filter((id) => onCanvas.has(id));
+
+          const response =
+            needed.length > 0
+              ? await fetch('/api/run', {
+                  method: 'POST',
+                  signal: controller.signal,
+                  headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+                  body: JSON.stringify({
+                    graphId,
+                    document: editor.document,
+                    connectionIds: needed,
+                  }),
+                })
+              : await fetch(`${publicEnv.engineUrl}/run`, {
+                  method: 'POST',
+                  signal: controller.signal,
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                    Accept: 'text/event-stream',
+                  },
+                  body: JSON.stringify({
+                    graphId,
+                    document: editor.document,
+                    ...(secrets ? { secrets } : {}),
+                  }),
+                });
 
           if (!response.ok) {
             const body: unknown = await response.json().catch(() => null);
@@ -267,7 +309,7 @@ export function useGraphRun(editor: GraphEditorState, graphId: string): UseGraph
         }
       })();
     },
-    [applyEvent, clearColdTimer, editor.document, graphId, phase],
+    [applyEvent, clearColdTimer, credentialConnectionIds, editor.document, graphId, phase],
   );
 
   // Report the outcome once, when the run reaches a terminal state.

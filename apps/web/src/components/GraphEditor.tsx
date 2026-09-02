@@ -9,7 +9,7 @@
  * verdict the run button and the export panel see.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { McpToolDescriptor, ToolGraphDocument } from '@toolgraph/schema-core';
 import { Button, Spinner } from '@toolgraph/ui';
@@ -20,6 +20,7 @@ import { ExportPanel } from '@/components/export';
 import { RunPanel } from '@/components/run';
 import { useGraphEditor, type SaveState } from '@/hooks/useGraphEditor';
 import { renameGraph } from '@/app/graphs/actions';
+import type { ImportableConnection } from '@/components/canvas/ServerConnectDialog';
 
 export interface GraphEditorProps {
   graphId: string;
@@ -27,6 +28,12 @@ export interface GraphEditorProps {
   initialDocument: ToolGraphDocument;
   initialTools?: McpToolDescriptor[];
   userEmail?: string | undefined;
+  /**
+   * Connections saved under Connections, with the tools each advertised when it
+   * was last tested successfully. Offered in the connect dialog so a server set
+   * up once does not have to be re-typed on every canvas.
+   */
+  savedConnections?: ImportableConnection[];
 }
 
 /** Autosave status, worded so it never looks like an error when it is not one. */
@@ -57,9 +64,21 @@ export function GraphEditor({
   initialDocument,
   initialTools = [],
   userEmail,
+  savedConnections = [],
 }: GraphEditorProps) {
   const router = useRouter();
   const editor = useGraphEditor(graphId, initialDocument, initialTools);
+
+  /*
+   * Which saved connections carry a stored credential. Computed once from the
+   * connections the page was rendered with rather than asked for at run time:
+   * the flag is a boolean on the connection row, so nothing secret is involved,
+   * and the run path only needs to know WHETHER to go through the server.
+   */
+  const credentialConnectionIds = useMemo(
+    () => savedConnections.filter((entry) => entry.hasCredential).map((entry) => entry.id),
+    [savedConnections],
+  );
 
   const [title, setTitle] = useState(initialTitle);
   const [runOpen, setRunOpen] = useState(false);
@@ -120,10 +139,10 @@ export function GraphEditor({
   );
 
   return (
-    <AppShell email={userEmail} toolbar={toolbar} fullBleed>
+    <AppShell email={userEmail} toolbar={toolbar} fullBleed active="graphs">
       <div className="flex h-full min-h-0">
         <aside className="w-72 shrink-0 overflow-y-auto border-r border-border-subtle bg-bg-subtle">
-          <ToolPalette editor={editor} />
+          <ToolPalette editor={editor} savedConnections={savedConnections} />
         </aside>
 
         <div className="relative min-w-0 flex-1">
@@ -164,6 +183,7 @@ export function GraphEditor({
         graphId={graphId}
         open={runOpen}
         onClose={() => setRunOpen(false)}
+        credentialConnectionIds={credentialConnectionIds}
       />
       <ExportPanel editor={editor} open={exportOpen} onClose={() => setExportOpen(false)} />
     </AppShell>

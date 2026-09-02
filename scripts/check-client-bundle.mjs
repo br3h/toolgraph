@@ -31,6 +31,10 @@ const SERVER_ONLY_VARS = [
   'RESEND_API_KEY',
   'SENTRY_AUTH_TOKEN',
   'UPSTASH_REDIS_REST_TOKEN',
+  // The key that decrypts every stored connection credential. If this name ever
+  // appears in a browser chunk, something imported `lib/crypto` from a client
+  // component and the `server-only` guard was bypassed or removed.
+  'CREDENTIAL_ENCRYPTION_KEY',
 ];
 
 /**

@@ -7,13 +7,25 @@
  * server code follows it into the browser bundle.
  */
 
-import type { CryptoCurrency } from '@/lib/billing/plan';
+import type { BillingInterval, CryptoCurrency } from '@/lib/billing/plan';
 import type { SubscriptionState } from '@/lib/billing/subscription';
 
-/** What the client sends to `POST /api/billing/submit`. */
+/**
+ * What the client sends to `POST /api/billing/submit`.
+ *
+ * Note what is NOT here: an amount. The server recomputes the price from
+ * (plan, billingInterval, seats) with the same `priceUsd` the pricing page
+ * used, so there is no field in which a client could propose what it owes.
+ */
 export interface BillingSubmitRequest {
   currency: CryptoCurrency;
   txHash: string;
+  plan: 'pro' | 'team';
+  billingInterval: BillingInterval;
+  /** Always 1 outside the Team plan. */
+  seats: number;
+  /** Required for `team`, and rejected otherwise. */
+  workspaceId?: string | null;
 }
 
 /**
@@ -63,7 +75,7 @@ export interface BillingErrorResponse {
 
 /** A live quote, taken on the server so the browser makes no third-party call. */
 export interface PaymentQuote {
-  /** How much of the currency $15 buys, at `rateUsd`. */
+  /** How much of the currency the selected plan's price buys, at `rateUsd`. */
   amount: number;
   /** One unit of the currency, in dollars. */
   rateUsd: number;

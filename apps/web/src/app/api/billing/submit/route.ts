@@ -31,9 +31,16 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 
 import { createAdminClient, createClient, getCurrentUser } from '@/lib/supabase/server';
-import { limitAuthAttempt } from '@/lib/rate-limit';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { publicEnv } from '@/lib/public-env';
-import { PLAN_INTERVAL_DAYS, PLAN_PRICE_USD, type CryptoCurrency } from '@/lib/billing/plan';
+import {
+  PLANS,
+  intervalDays,
+  priceUsd,
+  type BillingInterval,
+  type CryptoCurrency,
+  type PlanId,
+} from '@/lib/billing/plan';
 import { getCryptoAmountForUsd } from '@/lib/billing/price';
 import { verifyPayment, type VerificationOutcome } from '@/lib/billing/verify';
 import {
@@ -50,8 +57,10 @@ export const dynamic = 'force-dynamic';
  * The table this route writes. Columns it relies on:
  *
  *   owner uuid, currency text, tx_hash text, status text
- *   ('pending' | 'verified' | 'rejected'), reason text, usd_value numeric,
- *   reviewed_at timestamptz, plus `unique (currency, tx_hash)`.
+ *   ('pending' | 'verified' | 'rejected'), failure_reason text,
+ *   usd_at_verification numeric, verified_at timestamptz, plan text,
+ *   billing_interval text, seats integer, workspace_id uuid, expected_usd
+ *   numeric, plus `unique (currency, tx_hash)`.
  *
  * RLS: the caller may insert and select their own rows; NOBODY may update
  * theirs. The status transitions below all go through the service key, so a
@@ -79,8 +88,41 @@ const bodySchema = z
   .object({
     currency: z.enum(['ETH', 'USDT', 'BTC']),
     txHash: z.string().trim().min(1, 'Paste the transaction hash.').max(200),
+    // What is being bought. Defaulted so a client that predates this field —
+    // an open tab from before the deploy — still submits a valid monthly Pro
+    // claim rather than a 400 in the middle of a payment.
+    plan: z.enum(['pro', 'team']).default('pro'),
+    billingInterval: z.enum(['monthly', 'annual']).default('monthly'),
+    seats: z.coerce.number().int().min(1).max(200).default(1),
+    workspaceId: z.string().uuid().nullish(),
   })
   .superRefine((value, ctx) => {
+    // The price is never taken from the client — it is recomputed below from
+    // (plan, interval, seats) — but an unbuyable combination has to be refused
+    // here, because `priceUsd` returns null for one and there would be nothing
+    // to charge.
+    const definition = PLANS[value.plan as PlanId];
+    if (value.seats < definition.minSeats || value.seats > definition.maxSeats) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['seats'],
+        message: `The ${definition.name} plan is sold for ${definition.minSeats} to ${definition.maxSeats} seats.`,
+      });
+    }
+    if (value.plan === 'team' && !value.workspaceId) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['workspaceId'],
+        message: 'A Team payment has to name the workspace it pays for.',
+      });
+    }
+    if (value.plan !== 'team' && value.workspaceId) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['workspaceId'],
+        message: 'Only a Team payment can name a workspace.',
+      });
+    }
     // Shape-checking here keeps obvious junk from ever reaching a chain API,
     // which is the resource the rate limit above is protecting.
     const valid = value.currency === 'BTC' ? BITCOIN_TX : ETHEREUM_TX;
@@ -142,6 +184,23 @@ function outcomeJson(body: BillingSubmitResponse): NextResponse {
  * Move a submission to a decided state. Service key, because the RLS policies
  * deliberately give the owner no UPDATE — otherwise a user could write
  * `verified` onto their own row and skip the chain entirely.
+ *
+ * THE COLUMN NAMES HERE ARE LOAD-BEARING. This function previously wrote
+ * `reason`, `usd_value` and `reviewed_at`, none of which exist on
+ * `payment_submissions` — the table has `failure_reason`, `usd_at_verification`
+ * and `verified_at` (20260103000000_subscriptions.sql). Every update therefore
+ * failed, and because the failure was caught and returned as `false`, the two
+ * consequences were silent:
+ *
+ *   * a payment that verified on-chain never activated — the caller fell into
+ *     the "could not be recorded, will be finished by hand" branch; and
+ *   * a rejected claim was never marked rejected, so `reopenSubmission` (which
+ *     matches on `status = 'rejected'`) could never match, and the unique
+ *     (currency, tx_hash) index blocked the retry the UI offers, permanently.
+ *
+ * `verified_at` is set only on a verification, which is what the column means.
+ * A rejection is stamped by `failure_reason` becoming non-null instead, and
+ * `reopenSubmission` clears both.
  */
 async function markSubmission(
   id: string,
@@ -153,10 +212,10 @@ async function markSubmission(
     const admin = createAdminClient();
     const patch: Record<string, unknown> = {
       status,
-      reason,
-      reviewed_at: new Date().toISOString(),
+      failure_reason: reason,
+      verified_at: status === 'verified' ? new Date().toISOString() : null,
     };
-    if (usdValue !== undefined) patch.usd_value = Number(usdValue.toFixed(2));
+    if (usdValue !== undefined) patch.usd_at_verification = Number(usdValue.toFixed(2));
 
     const { error } = await admin.from(SUBMISSIONS_TABLE).update(patch).eq('id', id);
     if (error) {
@@ -205,7 +264,7 @@ async function reopenSubmission(id: string): Promise<boolean> {
     const admin = createAdminClient();
     const { data, error } = await admin
       .from(SUBMISSIONS_TABLE)
-      .update({ status: 'pending', reason: null, reviewed_at: null })
+      .update({ status: 'pending', failure_reason: null, verified_at: null })
       .eq('id', id)
       .eq('status', 'rejected')
       .select('id')
@@ -227,14 +286,35 @@ async function claimSubmission(
   userId: string,
   currency: CryptoCurrency,
   txHash: string,
+  purchase: {
+    plan: 'pro' | 'team';
+    billingInterval: BillingInterval;
+    seats: number;
+    workspaceId: string | null;
+    expectedUsd: number;
+  },
 ): Promise<Claim> {
-  // The RLS-scoped client, so the insert is subject to the owner policy and the
-  // unique index rather than to a check written here.
+  // The RLS-scoped client, so the insert is subject to the owner policy, the
+  // unique index, AND the `can_administer_workspace` conjunct on the insert
+  // policy — which is what stops a Team claim being filed against a workspace
+  // the caller does not administer. None of that is checked here on purpose.
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from(SUBMISSIONS_TABLE)
-    .insert({ owner: userId, currency, tx_hash: txHash, status: 'pending' })
+    .insert({
+      owner: userId,
+      currency,
+      tx_hash: txHash,
+      status: 'pending',
+      plan: purchase.plan,
+      billing_interval: purchase.billingInterval,
+      seats: purchase.plan === 'team' ? purchase.seats : 1,
+      workspace_id: purchase.workspaceId,
+      // Frozen at submission time. A claim is judged against the price that was
+      // quoted when it was made, not against today's.
+      expected_usd: purchase.expectedUsd,
+    })
     .select('id')
     .single();
 
@@ -285,7 +365,7 @@ export async function POST(request: NextRequest) {
 
   // Before the body is even read: everything past this point can reach a chain
   // API, and the account is the thing to attribute that spend to.
-  const verdict = await limitAuthAttempt(`billing:${user.id}`);
+  const verdict = await checkRateLimit('billingSubmit', `user:${user.id}`);
   if (!verdict.allowed) {
     return NextResponse.json(
       {
@@ -318,13 +398,33 @@ export async function POST(request: NextRequest) {
     return fail('invalid_request', detail, 400);
   }
 
-  const { currency } = parsed.data;
+  const { currency, plan, billingInterval, seats } = parsed.data;
+  const workspaceId = parsed.data.workspaceId ?? null;
+
+  /*
+   * The price is computed here from (plan, interval, seats) and NEVER read from
+   * the request. A client-supplied amount is a client-supplied entitlement, and
+   * `priceUsd` is the single definition used by the pricing page, the checkout
+   * panel and this check alike — so what a user was shown and what they are
+   * required to pay cannot drift apart.
+   */
+  const expectedUsd = priceUsd(plan, billingInterval, seats);
+  if (expectedUsd === null) {
+    return fail('invalid_request', 'That is not a plan Toolgraph sells.', 400);
+  }
+
   // Both chains write hashes in hex, and both are case-insensitive about it.
   // Normalising means a re-cased hash still collides with its own earlier
   // submission instead of slipping past the unique index as a fresh claim.
   const txHash = parsed.data.txHash.toLowerCase();
 
-  const claim = await claimSubmission(user.id, currency, txHash);
+  const claim = await claimSubmission(user.id, currency, txHash, {
+    plan,
+    billingInterval,
+    seats,
+    workspaceId,
+    expectedUsd,
+  });
   if (!claim.ok) return claim.response;
 
   let outcome: VerificationOutcome;
@@ -357,11 +457,11 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // --- The payment exists. Is it worth $15? -------------------------------
+  // --- The payment exists. Is it worth what was asked? --------------------
 
   let quote: { amount: number; rateUsd: number } | null = null;
   try {
-    quote = await getCryptoAmountForUsd(currency, PLAN_PRICE_USD);
+    quote = await getCryptoAmountForUsd(currency, expectedUsd);
   } catch (error) {
     console.error(
       `billing: price lookup failed: ${error instanceof Error ? error.message : 'unknown error'}`,
@@ -383,8 +483,12 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  if (usdPaid < PLAN_PRICE_USD * (1 - PRICE_TOLERANCE)) {
-    const reason = `That transaction is worth about $${usdPaid.toFixed(2)}, and the plan is $${PLAN_PRICE_USD} a month. Send the difference as a new transaction and submit that hash.`;
+  if (usdPaid < expectedUsd * (1 - PRICE_TOLERANCE)) {
+    const bought =
+      plan === 'team'
+        ? `${seats} seats on the Team plan, ${billingInterval === 'annual' ? 'annually' : 'monthly'},`
+        : `the Pro plan ${billingInterval === 'annual' ? 'annually' : 'monthly'},`;
+    const reason = `That transaction is worth about $${usdPaid.toFixed(2)}. You selected ${bought} which is $${expectedUsd}. Send the difference as a new transaction and submit that hash.`;
     await markSubmission(claim.id, 'rejected', reason, usdPaid);
     return outcomeJson({ status: 'rejected', reason, retryable: false });
   }
@@ -394,7 +498,13 @@ export async function POST(request: NextRequest) {
   const recorded = await markSubmission(claim.id, 'verified', null, usdPaid);
   if (recorded) {
     try {
-      await activateSubscription(user.id, PLAN_INTERVAL_DAYS);
+      await activateSubscription(user.id, {
+        plan,
+        billingInterval,
+        seats: plan === 'team' ? seats : 1,
+        workspaceId,
+        days: intervalDays(billingInterval),
+      });
     } catch (error) {
       console.error(
         `billing: activation failed after verifying submission ${claim.id}: ${
@@ -417,7 +527,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  let daysRemaining: number | null = PLAN_INTERVAL_DAYS;
+  let daysRemaining: number | null = intervalDays(billingInterval);
   let currentPeriodEnd: string | null = null;
   try {
     const state = await getSubscriptionState(user.id);

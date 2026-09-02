@@ -151,11 +151,17 @@ export async function middleware(request: NextRequest) {
      * layer that has to fail before anything is exposed.
      */
     const path = request.nextUrl.pathname;
-    const isProtected =
-      path === '/graphs' ||
-      path.startsWith('/graphs/') ||
-      path === '/billing' ||
-      path.startsWith('/billing/');
+    /*
+     * Prefix match on each section root, so a page added under one of them is
+     * guarded the day it is created rather than the day somebody remembers to
+     * extend this list. `/graphs` and `/graphs/…` are both covered by the same
+     * entry because the check tests for the exact segment or a `/` after it —
+     * a bare `startsWith('/graph')` would also match a future public `/graphs-faq`.
+     */
+    const PROTECTED_ROOTS = ['/graphs', '/connections', '/runs', '/usage', '/settings', '/billing'];
+    const isProtected = PROTECTED_ROOTS.some(
+      (root) => path === root || path.startsWith(`${root}/`),
+    );
 
     if (isProtected && !data.user) {
       const url = request.nextUrl.clone();

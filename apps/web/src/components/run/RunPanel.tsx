@@ -29,6 +29,12 @@ export interface RunPanelProps {
   graphId: string;
   open: boolean;
   onClose: () => void;
+  /**
+   * Saved connections on this canvas that have a stored credential. Their
+   * presence routes the run through the server so the credential can be
+   * decrypted there instead of in the browser.
+   */
+  credentialConnectionIds?: readonly string[];
 }
 
 /** Status is carried by an icon and a word — never by colour. */
@@ -118,8 +124,21 @@ function StepRow({ step }: { step: ExecutionStepResult }) {
   );
 }
 
-export function RunPanel({ editor, graphId, open, onClose }: RunPanelProps) {
-  const run = useGraphRun(editor, graphId);
+/**
+ * Hoisted so the default is referentially stable. A `= []` in the destructure
+ * would build a new array on every render, which changes the identity of the
+ * `start` callback in `useGraphRun` and defeats its memoisation.
+ */
+const NO_CREDENTIAL_CONNECTIONS: readonly string[] = [];
+
+export function RunPanel({
+  editor,
+  graphId,
+  open,
+  onClose,
+  credentialConnectionIds = NO_CREDENTIAL_CONNECTIONS,
+}: RunPanelProps) {
+  const run = useGraphRun(editor, graphId, credentialConnectionIds);
 
   const toolNodeCount = editor.document.nodes.filter((node) => node.kind === 'mcpTool').length;
 

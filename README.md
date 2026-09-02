@@ -38,15 +38,33 @@ keeps working.
 
 ### What you can do with it
 
-1. Sign up, and connect an MCP server (stdio, SSE, or streamable HTTP).
+1. Sign up, and save a connection to an MCP server (stdio, SSE, or streamable
+   HTTP). Its `Authorization` header is encrypted at rest, and the connection is
+   reusable from every graph.
 2. See every tool that server exposes, as a node on the canvas.
 3. Wire tool outputs into tool inputs. Compatible connections snap. Incompatible
    ones are rejected with the exact mismatch.
 4. Run the graph live against the real servers and watch each step stream back.
 5. Export the whole thing as TypeScript or Python and walk away with it.
 6. Save, rename, duplicate and version your graphs.
+7. Share a workspace: graphs everyone can edit, and connections members can use
+   without ever seeing the credential behind them.
 
 ---
+
+### The product surfaces
+
+| Route          | What it is                                                                |
+| -------------- | ------------------------------------------------------------------------- |
+| `/graphs`      | Your canvases, private or shared with a workspace.                        |
+| `/connections` | Saved MCP servers, their health, and their encrypted credentials.         |
+| `/runs`        | Execution history. Summaries only — per-step payloads are never stored.   |
+| `/usage`       | Counts read from the database, and the rate limits actually enforced.     |
+| `/settings`    | Account, security, workspaces, plan, and a data export and real deletion. |
+| `/billing`     | Plan, interval and seat selection, and the crypto payment flow.           |
+
+Public: `/`, `/pricing`, `/docs`, `/security`, `/privacy`, `/terms`. Everything
+else is `noindex` and guarded by middleware before any page code runs.
 
 ## Architecture
 
@@ -230,14 +248,26 @@ Highlights of what is implemented, not just described:
   after resolution is what makes DNS rebinding ineffective.
 - **`zod` validation** on every API route and engine endpoint, with explicit
   body size limits.
-- **Row Level Security** on every table, with a CI test proving cross-user reads
-  fail.
+- **Row Level Security** on every table, with CI tests proving cross-user and
+  cross-workspace reads fail — and proving the positive half too, so a
+  misconfigured client cannot pass them by seeing nothing.
 - **CSP with a per-request nonce**, no `unsafe-eval`, and `connect-src` limited
   to Supabase, Sentry, PostHog and the engine origin.
 - **No secret in any client bundle** — verified by grepping the production build
   output for the actual values in CI's final step.
-- **Secrets never persisted in plaintext**: per-server credentials are either
-  passed through at connect time or stored in Supabase Vault.
+- **Connection credentials encrypted at rest** with AES-256-GCM, under a key
+  held in the server environment rather than in Postgres, and bound to their
+  connection id as additional authenticated data. The table they live in is
+  granted to `service_role` alone and has RLS on with no policies, so no
+  browser-held token can read it by any query. A plaintext value exists only for
+  the duration of one outbound request; it is never returned to a browser,
+  logged, sent to Sentry or PostHog, or included in a data export. With no key
+  configured, Toolgraph refuses to store credentials at all rather than storing
+  them in a weaker form.
+- **Per-surface rate limits** rather than one global number — authentication,
+  OAuth start, connection tests, code generation, payment claims, invitations,
+  data export and account deletion each have their own policy, keyed by account
+  where there is one and by address where there is not.
 - **gitleaks pre-commit hook** that fails closed.
 
 ---
