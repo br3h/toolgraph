@@ -51,7 +51,19 @@ export async function buildServer(config: EngineConfig): Promise<FastifyInstance
       if (!origin) return callback(null, true);
 
       if (config.allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error(`Origin ${origin} is not allowed to call this engine.`), false);
+
+      // A plain Error here surfaces as a 500 "internal_error", which reads as
+      // the engine being broken rather than the origin being refused — and
+      // sends anyone debugging it looking in entirely the wrong place. Tagging
+      // the status makes the refusal say what it is.
+      const refusal = Object.assign(
+        new Error(
+          `Origin ${origin} is not allowed to call this engine. ` +
+            'Add it to ENGINE_ALLOWED_ORIGINS if it is one of yours.',
+        ),
+        { statusCode: 403 },
+      );
+      return callback(refusal, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'OPTIONS'],

@@ -72,6 +72,11 @@ function buildCsp(nonce: string, isDev: boolean): string {
     'style-src': ["'self'", "'unsafe-inline'"],
 
     'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+
+    // The landing page demo video. Same-origin only: it would otherwise fall
+    // back to `default-src`, and being explicit here is what makes it obvious
+    // that moving the recording to a CDN needs this line updated too.
+    'media-src': ["'self'", 'blob:'],
     'font-src': ["'self'", 'data:'],
     'connect-src': connectSources(),
     'worker-src': ["'self'", 'blob:'],
