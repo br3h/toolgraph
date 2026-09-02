@@ -425,9 +425,22 @@ suite('row level security isolation', () => {
     expect(renamed.data?.updated_at).not.toBe(before.data?.updated_at);
   });
 
-  it('keeps no credential column on mcp_server_connections', async () => {
-    // The table is documented as never storing auth material. `select *` returns
-    // every column the role can see, so this fails the moment one is added.
+  it('keeps no credential VALUE on mcp_server_connections', async () => {
+    /*
+     * The rule is that this table never holds auth MATERIAL — not that no column
+     * name mentions credentials.
+     *
+     * That distinction is load-bearing and was learned the hard way: this test
+     * originally rejected any column whose name contained "credential", and it
+     * duly failed when `has_credential` was added. That column is a boolean flag
+     * saying whether a secret exists in `connection_secrets`, which is the
+     * opposite of a leak — it is what lets the UI draw a padlock without the web
+     * app needing service-role access to find out.
+     *
+     * So the assertion is now about the shape of what is returned: a column may
+     * be NAMED for a credential if it is a boolean, and may not hold a string.
+     * A regression that added `credential text` still fails; a flag does not.
+     */
     const row = await alice.client
       .from('mcp_server_connections')
       .select('*')
@@ -435,14 +448,34 @@ suite('row level security isolation', () => {
       .single();
     expect(row.error).toBeNull();
 
-    const columns = Object.keys(row.data ?? {});
+    const data = (row.data ?? {}) as Record<string, unknown>;
+    const columns = Object.keys(data);
     expect(columns).toContain('transport');
-    for (const forbidden of ['token', 'secret', 'password', 'api_key', 'apikey', 'credential']) {
+
+    const CREDENTIAL_WORDS = ['token', 'secret', 'password', 'api_key', 'apikey', 'credential'];
+
+    for (const column of columns) {
+      const name = column.toLowerCase();
+      if (!CREDENTIAL_WORDS.some((word) => name.includes(word))) continue;
+
+      // A boolean cannot carry a token. Anything else named this way can.
       expect(
-        columns.filter((column) => column.toLowerCase().includes(forbidden)),
-        `mcp_server_connections grew a credential-shaped column matching "${forbidden}"`,
-      ).toEqual([]);
+        typeof data[column],
+        `mcp_server_connections.${column} is named for a credential and is not a boolean, ` +
+          `so it could hold auth material. Credentials belong in connection_secrets, which ` +
+          `is granted to service_role alone.`,
+      ).toBe('boolean');
     }
+  });
+
+  it('does not expose connection_secrets to a signed-in user', async () => {
+    // The other half of the same rule, and the one that actually matters: the
+    // table credentials DO live in is unreachable with a user's JWT. Refused by
+    // the GRANT, before RLS is consulted — `authenticated` has no privilege on
+    // it at all.
+    const { error } = await alice.client.from('connection_secrets').select('connection_id');
+    expect(error, 'connection_secrets was readable by an authenticated user').not.toBeNull();
+    expect(error?.message.toLowerCase()).toContain('permission denied');
   });
 
   /* ------------------------------------------------------------------------ */
