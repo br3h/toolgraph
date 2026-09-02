@@ -276,48 +276,41 @@ requires one click in the dashboard — Render has no CLI-only path for it:
 
 ### Steps that need you
 
-The database migrations, GitHub OAuth, the Render Blueprint and DNS are all
-done. Five things remain, and the first two currently break the product for
-real users.
+The engine's custom domain, its CORS origins, the migrations, GitHub OAuth and
+DNS are all done and verified. **One thing is still broken in production.**
 
-**1. Add `engine.toolgraph.dev` as a custom domain on the Render service.**
-DNS already points at Render, but the service has not been told to serve that
-hostname, so no TLS certificate was ever issued — the domain fails the TLS
-handshake outright with no certificate presented. Since
-`NEXT_PUBLIC_ENGINE_URL` points there, **no browser can reach the engine**:
-connecting an MCP server and running a graph both fail. The engine itself is
-healthy on `toolgraph-engine.onrender.com`. Render dashboard → the
-`toolgraph-engine` service → Settings → Custom Domains → add
-`engine.toolgraph.dev`, then wait for the certificate.
+**Supabase's SMTP settings are rejecting the confirmation email, so nobody can
+sign up.** A signup returns HTTP 500 with "Error sending confirmation email".
 
-**2. Add `https://www.toolgraph.dev` to `ENGINE_ALLOWED_ORIGINS` on Render.**
-The apex 308-redirects to `www`, so `www` is the Origin a browser actually
-sends. The variable currently holds only the apex, so the engine CORS-refuses
-every real request. Set it to:
+Resend is not the problem, which is worth stating because it is the obvious
+suspect: sending through the Resend API with the exact `RESEND_FROM_EMAIL` and
+`RESEND_API_KEY` from `.env.local` is **accepted**, and the DKIM and send
+records for the sending subdomain resolve correctly. The failure is in what
+Supabase is configured to hand to Resend.
 
-```
-https://toolgraph.dev,https://www.toolgraph.dev
-```
+Supabase dashboard → Project Settings → Authentication → SMTP Settings. The
+values Resend expects are easy to get subtly wrong:
 
-**3. Point Supabase's email at Resend.** Signup requires email confirmation
-(`mailer_autoconfirm` is off), and those confirmations go through Supabase's
-built-in sender, which is rate-limited to a handful per hour — verifying this
-tripped the limit with only a few test accounts, and real signups will hit it
-immediately. Supabase dashboard → Project Settings → Authentication → SMTP
-Settings, using the Resend credentials already in `.env.local`. (Resend is
-already wired for the welcome and magic-link mail the app sends itself; this is
-specifically Supabase's own confirmation mail.)
+| Field        | Value                                                         |
+| ------------ | ------------------------------------------------------------- |
+| Host         | `smtp.resend.com`                                             |
+| Port         | `465`                                                         |
+| Username     | `resend` — the literal word, **not** an email and not the key |
+| Password     | your `RESEND_API_KEY`                                         |
+| Sender email | must match `RESEND_FROM_EMAIL` exactly                        |
 
-**4. Check the Supabase redirect allowlist has no wildcard.** Authentication →
-URL Configuration → Redirect URLs should list only your own callbacks. It is
-validated server-side, so it cannot be probed from outside. The app's own
-`/auth/callback` is not an open redirect regardless — it honours only
-single-slash relative paths — but Supabase's `redirect_to` is a separate layer.
+The username is the usual culprit: Resend wants the literal string `resend`,
+and putting the API key or an address there fails in exactly this way. Port 587
+also works if 465 is blocked; port 25 will not.
 
-**5. Add the demo recording.** Drop `demo.mp4` and `demo-poster.png` into
-`apps/web/public/`. Until then the landing page falls back to its static
-diagram, so nothing looks broken. See `apps/web/public/README.md` for what the
-recording should show.
+Until this is fixed, existing accounts sign in normally and everything else
+works — only new signups are blocked. The signup smoke test is currently
+failing against production for precisely this reason, and will pass once the
+setting is corrected. It has deliberately not been weakened to hide it.
+
+Optionally, you can also drop the confirmation requirement entirely (Supabase →
+Authentication → Providers → Email → "Confirm email" off), which unblocks
+signups immediately but lets people register addresses they do not own.
 
 ### Custom domain — DNS records to add in Namecheap
 
