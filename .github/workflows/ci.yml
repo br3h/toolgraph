@@ -20,6 +20,16 @@ env:
   # pipeline passes identically on a fork PR with no repository secrets at all.
   NODE_VERSION: '22.22.2'
   PNPM_VERSION: '10.34.5'
+  # Pinned rather than 'latest'.
+  #
+  # `version: latest` makes supabase/setup-cli resolve the newest release
+  # through the GitHub API, and two jobs starting at the same moment share one
+  # unauthenticated rate-limit bucket. The e2e job duly failed with
+  # "Failed to resolve latest Supabase CLI release: rate limit exceeded" while
+  # the RLS job — same action, same second — succeeded. Pinning skips the
+  # resolution step, and it also means a CLI release cannot change what CI does
+  # without a commit saying so.
+  SUPABASE_CLI_VERSION: '2.116.0'
   NEXT_TELEMETRY_DISABLED: '1'
   DO_NOT_TRACK: '1'
 
@@ -147,7 +157,7 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: ${{ env.SUPABASE_CLI_VERSION }}
 
       - name: Install
         run: pnpm install --frozen-lockfile
@@ -242,7 +252,7 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: ${{ env.SUPABASE_CLI_VERSION }}
 
       - name: Install
         run: pnpm install --frozen-lockfile
