@@ -487,6 +487,27 @@ function Edge({ from, to, drawn, invalid, pulsing }: EdgeProps) {
    */
   return (
     <g>
+      {/*
+        The "checking" emphasis is a separate halo whose OPACITY animates,
+        rather than a transition on the base path's stroke-width. Opacity is
+        composited; a changing stroke width repaints the path on every frame.
+        It also reads better — the line looks like it is being examined rather
+        than simply getting fatter.
+      */}
+      {pulsing ? (
+        <path
+          d={edgePath(from, to)}
+          fill="none"
+          pathLength={1}
+          strokeDasharray={1}
+          strokeDashoffset={drawn ? 0 : 1}
+          className="stroke-[var(--tg-edge)]"
+          strokeWidth={5}
+          strokeLinecap="round"
+          style={{ animation: 'tg-demo-pulse 760ms ease-in-out infinite' }}
+        />
+      ) : null}
+
       <path
         d={edgePath(from, to)}
         fill="none"
@@ -494,9 +515,9 @@ function Edge({ from, to, drawn, invalid, pulsing }: EdgeProps) {
         strokeDasharray={1}
         strokeDashoffset={drawn ? 0 : 1}
         className="stroke-[var(--tg-edge)]"
-        strokeWidth={pulsing ? 2.4 : 1.8}
+        strokeWidth={1.8}
         strokeLinecap="round"
-        style={{ transition: 'stroke-dashoffset 900ms ease-in-out, stroke-width 300ms ease-out' }}
+        style={{ transition: 'stroke-dashoffset 900ms ease-in-out' }}
       />
 
       {/* Drawn on top once refused: the dashed overlay is what carries

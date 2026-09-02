@@ -111,6 +111,16 @@ body {
   }
 }
 
+@keyframes tg-demo-pulse {
+  0%,
+  100% {
+    opacity: 0.12;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
 @keyframes tg-demo-rise {
   from {
     opacity: 0;
