@@ -6,6 +6,7 @@ import { ThemeToggle } from '@toolgraph/ui';
 
 import { getCurrentUser } from '@/lib/supabase/server';
 import { DemoAnimation } from '@/components/DemoAnimation';
+import { MobileNav } from '@/components/MobileNav';
 
 export const metadata: Metadata = {
   description:
@@ -32,8 +33,8 @@ export default async function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 border-b border-border-subtle bg-bg/90 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-6">
-          <Link href="/" className="flex items-center gap-2.5">
+        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-3 px-4 sm:px-6">
+          <Link href="/" className="flex min-w-0 items-center gap-2.5">
             <Image
               src="/toolgraph.png"
               alt=""
@@ -42,10 +43,10 @@ export default async function LandingPage() {
               className="rounded"
               priority
             />
-            <span className="text-sm font-semibold tracking-tight">Toolgraph</span>
+            <span className="truncate text-sm font-semibold tracking-tight">Toolgraph</span>
           </Link>
 
-          <nav className="flex items-center gap-1.5">
+          <nav className="hidden shrink-0 items-center gap-1.5 sm:flex">
             <Link
               href="/pricing"
               className="rounded-[var(--tg-radius-sm)] px-2.5 py-1.5 text-xs font-medium text-fg-muted transition-colors hover:text-fg"
@@ -74,6 +75,24 @@ export default async function LandingPage() {
               Get started
             </Link>
           </nav>
+
+          {/*
+            Below `sm` the same destinations move behind the trigger. The theme
+            toggle stays outside it: it is a single icon that always fits, and
+            burying a preference control makes it harder to find than it is wide.
+          */}
+          <div className="flex shrink-0 items-center gap-1.5 sm:hidden">
+            <ThemeToggle />
+            <MobileNav
+              label="Main menu"
+              links={[
+                { href: '/pricing', label: 'Pricing' },
+                { href: REPO, label: 'GitHub', external: true },
+                { href: '/login', label: 'Sign in' },
+                { href: '/signup', label: 'Get started', emphasis: true },
+              ]}
+            />
+          </div>
         </div>
       </header>
 
