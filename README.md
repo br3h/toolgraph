@@ -276,40 +276,48 @@ requires one click in the dashboard — Render has no CLI-only path for it:
 
 ### Steps that need you
 
-Four things cannot be done from a terminal, because each needs a browser
-session or a dashboard click:
+The database migrations, GitHub OAuth, the Render Blueprint and DNS are all
+done. Five things remain, and the first two currently break the product for
+real users.
 
-1. **Apply the migrations to the hosted Supabase project.** `supabase login`
-   opens a browser for device authorisation, so it cannot run unattended:
+**1. Add `engine.toolgraph.dev` as a custom domain on the Render service.**
+DNS already points at Render, but the service has not been told to serve that
+hostname, so no TLS certificate was ever issued — the domain fails the TLS
+handshake outright with no certificate presented. Since
+`NEXT_PUBLIC_ENGINE_URL` points there, **no browser can reach the engine**:
+connecting an MCP server and running a graph both fail. The engine itself is
+healthy on `toolgraph-engine.onrender.com`. Render dashboard → the
+`toolgraph-engine` service → Settings → Custom Domains → add
+`engine.toolgraph.dev`, then wait for the certificate.
 
-   ```bash
-   supabase login
-   supabase link --project-ref <the subdomain of your NEXT_PUBLIC_SUPABASE_URL>
-   supabase db push
-   ```
+**2. Add `https://www.toolgraph.dev` to `ENGINE_ALLOWED_ORIGINS` on Render.**
+The apex 308-redirects to `www`, so `www` is the Origin a browser actually
+sends. The variable currently holds only the apex, so the engine CORS-refuses
+every real request. Set it to:
 
-   Until this runs, signup fails, because the tables do not exist yet. The
-   migrations themselves are verified: CI applies them from scratch and runs
-   the RLS isolation tests against them on every push.
+```
+https://toolgraph.dev,https://www.toolgraph.dev
+```
 
-2. **Create the Render Blueprint.** Render has no CLI path for the first
-   creation. Dashboard → **New** → **Blueprint** → point it at this repo; it
-   reads `render.yaml`. Then set the six variables that file marks
-   `sync: false`, taking the values from your `.env.local`:
-   `ENGINE_ALLOWED_ORIGINS`, `SENTRY_DSN_BACKEND`, `UPSTASH_REDIS_REST_URL`,
-   `UPSTASH_REDIS_REST_TOKEN`, `SUPABASE_URL` and `SUPABASE_SECRET_KEY`.
+**3. Point Supabase's email at Resend.** Signup requires email confirmation
+(`mailer_autoconfirm` is off), and those confirmations go through Supabase's
+built-in sender, which is rate-limited to a handful per hour — verifying this
+tripped the limit with only a few test accounts, and real signups will hit it
+immediately. Supabase dashboard → Project Settings → Authentication → SMTP
+Settings, using the Resend credentials already in `.env.local`. (Resend is
+already wired for the welcome and magic-link mail the app sends itself; this is
+specifically Supabase's own confirmation mail.)
 
-3. **Enable the GitHub auth provider.** Supabase dashboard → Authentication →
-   Providers → GitHub. It needs a GitHub OAuth app (Settings → Developer
-   settings → OAuth Apps) whose callback URL is
-   `https://<your-project-ref>.supabase.co/auth/v1/callback`. Email and
-   password sign-in works without this; only the GitHub button depends on it.
+**4. Check the Supabase redirect allowlist has no wildcard.** Authentication →
+URL Configuration → Redirect URLs should list only your own callbacks. It is
+validated server-side, so it cannot be probed from outside. The app's own
+`/auth/callback` is not an open redirect regardless — it honours only
+single-slash relative paths — but Supabase's `redirect_to` is a separate layer.
 
-   While you are there, add your deployment URL to Authentication → URL
-   Configuration → Redirect URLs, or OAuth will refuse to redirect back.
-
-4. **Add the DNS records below**, once you are ready to point `toolgraph.dev`
-   at the deployment.
+**5. Add the demo recording.** Drop `demo.mp4` and `demo-poster.png` into
+`apps/web/public/`. Until then the landing page falls back to its static
+diagram, so nothing looks broken. See `apps/web/public/README.md` for what the
+recording should show.
 
 ### Custom domain — DNS records to add in Namecheap
 
