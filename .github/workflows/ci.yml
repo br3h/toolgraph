@@ -57,7 +57,7 @@ jobs:
       # The Python codegen tests compile what they generate, and validate it
       # against pydantic when it is importable. Installing it here means that
       # check actually runs in CI instead of silently skipping.
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
