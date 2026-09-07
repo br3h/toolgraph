@@ -15,7 +15,7 @@
     "@monaco-editor/react": "4.7.0",
     "@sentry/nextjs": "10.73.0",
     "@supabase/ssr": "0.12.5",
-    "@supabase/supabase-js": "2.112.4",
+    "@supabase/supabase-js": "2.115.0",
     "@toolgraph/codegen": "workspace:*",
     "@toolgraph/schema-core": "workspace:*",
     "@toolgraph/ui": "workspace:*",
