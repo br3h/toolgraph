@@ -22,7 +22,7 @@
     "@upstash/ratelimit": "2.0.8",
     "@upstash/redis": "1.38.3",
     "next": "15.5.25",
-    "posthog-js": "1.422.5",
+    "posthog-js": "1.426.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "reactflow": "11.11.4",
