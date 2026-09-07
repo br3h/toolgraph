@@ -21,7 +21,7 @@
     "@toolgraph/ui": "workspace:*",
     "@upstash/ratelimit": "2.0.8",
     "@upstash/redis": "1.38.3",
-    "next": "15.5.25",
+    "next": "16.3.4",
     "posthog-js": "1.422.5",
     "react": "19.2.8",
     "react-dom": "19.2.8",
